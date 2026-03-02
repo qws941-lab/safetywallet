@@ -69,3 +69,15 @@ export function getErrorMessage(error: unknown) {
   }
   return "요청 처리 중 오류가 발생했습니다.";
 }
+
+export function formatUnixDate(value: number | string | null | undefined) {
+  if (value == null) {
+    return "-";
+  }
+
+  if (typeof value === "number") {
+    return new Date(value * 1000).toLocaleDateString("ko-KR");
+  }
+
+  return value;
+}

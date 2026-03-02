@@ -21,7 +21,7 @@ const app = new Hono<AppType>();
 
 const UpdateTbmInputSchema = z
   .object({
-    date: z.string().datetime().optional(),
+    date: z.string().optional(),
     topic: z.string().min(1).optional(),
     content: z.string().optional(),
     weatherCondition: z.string().optional(),
@@ -152,6 +152,7 @@ app.get("/", async (c) => {
     .select({
       tbm: tbmRecords,
       leaderName: users.name,
+      attendeeCount: sql<number>`(SELECT COUNT(*) FROM ${tbmAttendees} WHERE ${tbmAttendees.tbmRecordId} = ${tbmRecords.id})`,
     })
     .from(tbmRecords)
     .innerJoin(users, eq(tbmRecords.leaderId, users.id))

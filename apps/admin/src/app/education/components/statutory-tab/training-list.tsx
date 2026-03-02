@@ -19,6 +19,7 @@ import {
 } from "@safetywallet/ui";
 import type { TrainingItem } from "../education-types";
 import {
+  formatUnixDate,
   getTrainingStatusLabel,
   getTrainingTypeLabel,
 } from "../../education-helpers";
@@ -84,7 +85,7 @@ export function TrainingList({
                       </td>
                       <td className="px-2 py-2">{item.userName || "-"}</td>
                       <td className="px-2 py-2">
-                        {item.training.trainingDate}
+                        {formatUnixDate(item.training.trainingDate)}
                       </td>
                       <td className="px-2 py-2">
                         <Badge variant="secondary">
@@ -94,7 +95,7 @@ export function TrainingList({
                         </Badge>
                       </td>
                       <td className="px-2 py-2">
-                        {item.training.expirationDate || "-"}
+                        {formatUnixDate(item.training.expirationDate)}
                       </td>
                       <td className="px-2 py-2">
                         <div className="flex items-center gap-1">

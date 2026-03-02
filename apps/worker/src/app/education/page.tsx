@@ -54,6 +54,7 @@ export default function EducationPage() {
       <div className="sticky top-14 z-30 bg-white border-b border-gray-200 px-4">
         <div className="flex gap-4">
           <button
+            type="button"
             onClick={() => setActiveTab("contents")}
             className={cn(
               "flex-1 py-3 text-sm font-medium border-b-2 transition-colors",
@@ -65,6 +66,7 @@ export default function EducationPage() {
             {t("education.materials")}
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("quizzes")}
             className={cn(
               "flex-1 py-3 text-sm font-medium border-b-2 transition-colors",
@@ -76,6 +78,7 @@ export default function EducationPage() {
             {t("education.quizzes")}
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("tbm")}
             className={cn(
               "flex-1 py-3 text-sm font-medium border-b-2 transition-colors",
@@ -209,13 +212,15 @@ function QuizzesTab({ siteId }: { siteId: string }) {
                     {t("education.passingScore")} {quiz.passingScore}점
                   </span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  <span>
-                    {t("education.maxAttempts")} {quiz.maxAttempts}
-                    {t("education.attempts")}
-                  </span>
-                </div>
+                {quiz.maxAttempts != null && quiz.maxAttempts > 0 && (
+                  <div className="flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>
+                      {t("education.maxAttempts")} {quiz.maxAttempts}
+                      {t("education.attempts")}
+                    </span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

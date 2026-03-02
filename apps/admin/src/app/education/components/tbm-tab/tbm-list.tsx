@@ -19,7 +19,7 @@ import {
   useToast,
 } from "@safetywallet/ui";
 import { useTbmRecord, useDeleteTbmRecord } from "@/hooks/use-api";
-import { getErrorMessage } from "../../education-helpers";
+import { getErrorMessage, formatUnixDate } from "../../education-helpers";
 import type { TbmRecordItem, TbmDetail } from "../education-types";
 
 interface Props {
@@ -95,7 +95,9 @@ export function TbmList({
                     const isExpanded = expandedTbmId === item.tbm.id;
                     return (
                       <tr key={item.tbm.id} className="border-b">
-                        <td className="px-2 py-2">{item.tbm.date}</td>
+                        <td className="px-2 py-2">
+                          {formatUnixDate(item.tbm.date)}
+                        </td>
                         <td className="px-2 py-2 font-medium">
                           {item.tbm.topic}
                         </td>

@@ -209,6 +209,7 @@ export function useTbmRecords(siteId: string) {
               updatedAt: string;
             };
             leaderName: string;
+            attendeeCount?: number;
           }>;
         }>
       >(`/education/tbm?siteId=${siteId}`).then((r) =>
@@ -220,7 +221,7 @@ export function useTbmRecords(siteId: string) {
           content: rec.tbm.content,
           safetyTopic: rec.tbm.topic,
           leader: rec.leaderName ? { nameMasked: rec.leaderName } : undefined,
-          _count: { attendees: 0 },
+          _count: { attendees: rec.attendeeCount ?? 0 },
         })),
       ),
     enabled: !!siteId,

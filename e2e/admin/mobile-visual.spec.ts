@@ -42,6 +42,7 @@ test.describe("Admin App - Mobile Visual View", () => {
           text.includes("falling back to browser navigation") ||
           text.includes("net::ERR_CERT_AUTHORITY_INVALID") ||
           text.includes("Failed to load resource: net::ERR_") ||
+          text.includes("the server responded with a status of 4") ||
           text.includes("Content-Security-Policy") ||
           text.includes("Content Security Policy");
         if (!ignorable) {

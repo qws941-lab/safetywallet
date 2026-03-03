@@ -64,9 +64,12 @@ test.describe("Reviews API (Worker)", () => {
     await ensureAuth(request);
     test.skip(!accessToken, "Login not available");
 
-    const response = await request.get("./reviews?siteId=test", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    const response = await request.get(
+      "./reviews?siteId=00000000-0000-0000-0000-000000000000",
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      },
+    );
 
     const status = response.status();
     expect([200, 403].includes(status)).toBeTruthy();

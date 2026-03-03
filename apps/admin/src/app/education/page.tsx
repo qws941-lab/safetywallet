@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Card, CardContent } from "@safetywallet/ui";
+import { Button } from "@safetywallet/ui";
+import { cn } from "@/lib/utils";
 import { ContentsTab } from "./components/contents-tab";
 import { QuizzesTab } from "./components/quizzes-tab";
 import { StatutoryTab } from "./components/statutory-tab";
@@ -19,22 +20,26 @@ export default function EducationPage() {
           교육자료, 퀴즈, 법정교육, TBM을 한 곳에서 관리합니다.
         </p>
       </div>
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-            {tabItems.map((tab) => (
-              <Button
-                key={tab.id}
-                type="button"
-                variant={activeTab === tab.id ? "default" : "outline"}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.label}
-              </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="border-b">
+        <div className="flex gap-0">
+          {tabItems.map((tab) => (
+            <Button
+              key={tab.id}
+              type="button"
+              variant="ghost"
+              className={cn(
+                "rounded-none border-b-2 px-4 py-2",
+                activeTab === tab.id
+                  ? "border-primary font-semibold text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.label}
+            </Button>
+          ))}
+        </div>
+      </div>
       {activeTab === "contents" && <ContentsTab />}
       {activeTab === "quizzes" && <QuizzesTab />}
       {activeTab === "statutory" && <StatutoryTab />}

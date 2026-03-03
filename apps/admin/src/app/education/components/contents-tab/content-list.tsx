@@ -13,12 +13,9 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
 } from "@safetywallet/ui";
 import { useDeleteEducationContent } from "@/hooks/use-api";
+import { DataTable, type Column } from "@/components/data-table";
 import { getContentTypeLabel } from "../../education-helpers";
 import type { EducationContentItem } from "../education-types";
 
@@ -43,117 +40,110 @@ export function ContentList({
     try {
       await deleteMutation.mutateAsync(deleteContentId);
       onDeleteContent();
-    } catch (error) {
-      // Error handling done in parent or can add toast here
+    } catch {
+      // Error handling done in parent or via toast
     }
     setDeleteContentId(null);
   };
 
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>교육자료 목록</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">로딩 중...</p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const columns: Column<EducationContentItem>[] = [
+    {
+      key: "title",
+      header: "제목",
+      sortable: true,
+      render: (item) => <span className="font-medium">{item.title}</span>,
+    },
+    {
+      key: "contentType",
+      header: "유형",
+      sortable: true,
+      render: (item) => (
+        <Badge variant="outline">{getContentTypeLabel(item.contentType)}</Badge>
+      ),
+    },
+    {
+      key: "externalSource",
+      header: "출처",
+      render: (item) => {
+        if (item.externalSource === "YOUTUBE") {
+          return (
+            <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
+              YouTube
+            </Badge>
+          );
+        }
+        if (item.externalSource === "KOSHA") {
+          return (
+            <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+              KOSHA
+            </Badge>
+          );
+        }
+        return <Badge variant="secondary">직접</Badge>;
+      },
+    },
+    {
+      key: "description",
+      header: "설명",
+      render: (item) => (
+        <span className="text-muted-foreground">{item.description || "-"}</span>
+      ),
+    },
+    {
+      key: "createdAt",
+      header: "등록일",
+      sortable: true,
+      render: (item) => (
+        <span className="text-muted-foreground">
+          {new Date(item.createdAt).toLocaleDateString("ko-KR")}
+        </span>
+      ),
+    },
+    {
+      key: "_actions",
+      header: "관리",
+      render: (item) => (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditContent(item);
+            }}
+            disabled={deleteMutation.isPending}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={(e) => {
+              e.stopPropagation();
+              setDeleteContentId(item.id);
+            }}
+            disabled={deleteMutation.isPending}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
-  if (contents.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>교육자료 목록</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            등록된 교육자료가 없습니다.
-          </p>
-        </CardContent>
-      </Card>
-    );
+  if (isLoading) {
+    return <p className="text-sm text-muted-foreground">로딩 중...</p>;
   }
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>교육자료 목록</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="px-2 py-2">제목</th>
-                  <th className="px-2 py-2">유형</th>
-                  <th className="px-2 py-2">출처</th>
-                  <th className="px-2 py-2">설명</th>
-                  <th className="px-2 py-2">등록일</th>
-                  <th className="px-2 py-2">관리</th>
-                </tr>
-              </thead>
-              <tbody>
-                {contents.map((item) => (
-                  <tr key={item.id} className="border-b">
-                    <td className="px-2 py-2 font-medium">{item.title}</td>
-                    <td className="px-2 py-2">
-                      <Badge variant="outline">
-                        {getContentTypeLabel(item.contentType)}
-                      </Badge>
-                    </td>
-                    <td className="px-2 py-2">
-                      {item.externalSource === "YOUTUBE" && (
-                        <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
-                          YouTube
-                        </Badge>
-                      )}
-                      {item.externalSource === "KOSHA" && (
-                        <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
-                          KOSHA
-                        </Badge>
-                      )}
-                      {(item.externalSource === "LOCAL" ||
-                        !item.externalSource) && (
-                        <Badge variant="secondary">직접</Badge>
-                      )}
-                    </td>
-                    <td className="px-2 py-2 text-muted-foreground">
-                      {item.description || "-"}
-                    </td>
-                    <td className="px-2 py-2 text-muted-foreground">
-                      {new Date(item.createdAt).toLocaleDateString("ko-KR")}
-                    </td>
-                    <td className="px-2 py-2">
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onEditContent(item)}
-                          disabled={deleteMutation.isPending}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeleteContentId(item.id)}
-                          disabled={deleteMutation.isPending}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <DataTable
+        columns={columns}
+        data={contents}
+        searchable
+        searchPlaceholder="교육자료 검색..."
+        emptyMessage="등록된 교육자료가 없습니다."
+      />
 
       <AlertDialog
         open={!!deleteContentId}

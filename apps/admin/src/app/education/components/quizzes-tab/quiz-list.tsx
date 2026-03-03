@@ -13,12 +13,8 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
 } from "@safetywallet/ui";
-
+import { DataTable, type Column } from "@/components/data-table";
 import { getQuizStatusLabel } from "../../education-helpers";
 import type { QuizItem } from "../education-types";
 
@@ -41,103 +37,114 @@ export function QuizList({
 }: Props) {
   const [deleteQuizId, setDeleteQuizId] = useState<string | null>(null);
 
+  const columns: Column<QuizItem>[] = [
+    {
+      key: "title",
+      header: "제목",
+      sortable: true,
+      render: (item) => <span className="font-medium">{item.title}</span>,
+    },
+    {
+      key: "status",
+      header: "상태",
+      sortable: true,
+      render: (item) => (
+        <Badge variant="secondary">
+          {getQuizStatusLabel(item.status ?? "DRAFT")}
+        </Badge>
+      ),
+    },
+    {
+      key: "passingScore",
+      header: "통과점수",
+      sortable: true,
+    },
+    {
+      key: "timeLimitMinutes",
+      header: "제한시간",
+      render: (item) =>
+        item.timeLimitMinutes ? `${item.timeLimitMinutes}분` : "-",
+    },
+    {
+      key: "createdAt",
+      header: "등록일",
+      sortable: true,
+      render: (item) => (
+        <span className="text-muted-foreground">
+          {new Date(item.createdAt).toLocaleDateString("ko-KR")}
+        </span>
+      ),
+    },
+    {
+      key: "_actions",
+      header: "관리",
+      className: "text-right",
+      render: (item) => {
+        const isExpanded = expandedQuizId === item.id;
+        return (
+          <div className="flex items-center justify-end gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditQuiz(item);
+              }}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeleteQuizId(item.id);
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleExpand(isExpanded ? null : item.id);
+              }}
+            >
+              {isExpanded ? (
+                <>
+                  <ChevronUp className="mr-1 h-4 w-4" />
+                  접기
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="mr-1 h-4 w-4" />
+                  문항 관리
+                </>
+              )}
+            </Button>
+          </div>
+        );
+      },
+    },
+  ];
+
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">로딩 중...</p>;
   }
 
-  if (quizzes.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">등록된 퀴즈가 없습니다.</p>
-    );
-  }
-
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>퀴즈 목록</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left">
-                  <th className="px-2 py-2">제목</th>
-                  <th className="px-2 py-2">상태</th>
-                  <th className="px-2 py-2">통과점수</th>
-                  <th className="px-2 py-2">제한시간</th>
-                  <th className="px-2 py-2">등록일</th>
-                  <th className="px-2 py-2 text-right">관리</th>
-                </tr>
-              </thead>
-              <tbody>
-                {quizzes.map((quiz) => {
-                  const isExpanded = expandedQuizId === quiz.id;
-                  return (
-                    <tr key={quiz.id} className="border-b">
-                      <td className="px-2 py-2 font-medium">{quiz.title}</td>
-                      <td className="px-2 py-2">
-                        <Badge variant="secondary">
-                          {getQuizStatusLabel(quiz.status ?? "DRAFT")}
-                        </Badge>
-                      </td>
-                      <td className="px-2 py-2">{quiz.passingScore}</td>
-                      <td className="px-2 py-2">
-                        {quiz.timeLimitMinutes
-                          ? `${quiz.timeLimitMinutes}분`
-                          : "-"}
-                      </td>
-                      <td className="px-2 py-2 text-muted-foreground">
-                        {new Date(quiz.createdAt).toLocaleDateString("ko-KR")}
-                      </td>
-                      <td className="px-2 py-2">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => onEditQuiz(quiz)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleteQuizId(quiz.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              onToggleExpand(isExpanded ? null : quiz.id);
-                            }}
-                          >
-                            {isExpanded ? (
-                              <>
-                                <ChevronUp className="mr-1 h-4 w-4" />
-                                접기
-                              </>
-                            ) : (
-                              <>
-                                <ChevronDown className="mr-1 h-4 w-4" />
-                                문항 관리
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <DataTable
+        columns={columns}
+        data={quizzes}
+        searchable
+        searchPlaceholder="퀴즈 검색..."
+        emptyMessage="등록된 퀴즈가 없습니다."
+      />
       <AlertDialog
         open={!!deleteQuizId}
         onOpenChange={(open) => !open && setDeleteQuizId(null)}

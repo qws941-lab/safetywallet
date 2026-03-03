@@ -18,7 +18,8 @@ import {
   Button,
   useToast,
 } from "@safetywallet/ui";
-import { useTbmRecord, useDeleteTbmRecord } from "@/hooks/use-api";
+import { useTbmRecord } from "@/hooks/use-api";
+import { DataTable, type Column } from "@/components/data-table";
 import { getErrorMessage, formatUnixDate } from "../../education-helpers";
 import type { TbmRecordItem, TbmDetail } from "../education-types";
 
@@ -60,127 +61,128 @@ export function TbmList({
     setDeleteTbmId(null);
   };
 
+  const columns: Column<TbmRecordItem>[] = [
+    {
+      key: "tbm.date",
+      header: "일자",
+      sortable: true,
+      render: (item) => <span>{formatUnixDate(item.tbm.date)}</span>,
+    },
+    {
+      key: "tbm.topic",
+      header: "주제",
+      sortable: true,
+      render: (item) => <span className="font-medium">{item.tbm.topic}</span>,
+    },
+    {
+      key: "leaderName",
+      header: "인솔자",
+      sortable: true,
+      render: (item) => <span>{item.leaderName || "-"}</span>,
+    },
+    {
+      key: "_attendeeCount",
+      header: "참석자수",
+      render: () => <span>-</span>,
+    },
+    {
+      key: "tbm.weatherCondition",
+      header: "날씨",
+      render: (item) => <span>{item.tbm.weatherCondition || "-"}</span>,
+    },
+    {
+      key: "_actions",
+      header: "상세",
+      render: (item) => {
+        const isExpanded = expandedTbmId === item.tbm.id;
+        return (
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpandedTbmId(isExpanded ? null : item.tbm.id);
+              }}
+            >
+              {isExpanded ? "접기" : "참석자 보기"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditTbm(item);
+              }}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeleteTbmId(item.tbm.id);
+              }}
+              disabled={deleteMutation.isPending}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        );
+      },
+    },
+  ];
+
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">로딩 중...</p>;
   }
 
-  if (tbmRecords.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">등록된 TBM이 없습니다.</p>
-    );
-  }
-
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>TBM 목록</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left">
-                    <th className="px-2 py-2">일자</th>
-                    <th className="px-2 py-2">주제</th>
-                    <th className="px-2 py-2">인솔자</th>
-                    <th className="px-2 py-2">참석자수</th>
-                    <th className="px-2 py-2">날씨</th>
-                    <th className="px-2 py-2">상세</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tbmRecords.map((item) => {
-                    const isExpanded = expandedTbmId === item.tbm.id;
-                    return (
-                      <tr key={item.tbm.id} className="border-b">
-                        <td className="px-2 py-2">
-                          {formatUnixDate(item.tbm.date)}
-                        </td>
-                        <td className="px-2 py-2 font-medium">
-                          {item.tbm.topic}
-                        </td>
-                        <td className="px-2 py-2">{item.leaderName || "-"}</td>
-                        <td className="px-2 py-2">-</td>
-                        <td className="px-2 py-2">
-                          {item.tbm.weatherCondition || "-"}
-                        </td>
-                        <td className="px-2 py-2">
-                          <div className="flex items-center gap-1">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                setExpandedTbmId(
-                                  isExpanded ? null : item.tbm.id,
-                                )
-                              }
-                            >
-                              {isExpanded ? "접기" : "참석자 보기"}
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => onEditTbm(item)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setDeleteTbmId(item.tbm.id)}
-                              disabled={deleteMutation.isPending}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+      <DataTable
+        columns={columns}
+        data={tbmRecords}
+        searchable
+        searchPlaceholder="TBM 검색..."
+        emptyMessage="등록된 TBM이 없습니다."
+      />
 
-            {expandedTbmId && typedTbmDetail && (
-              <Card className="border-dashed">
-                <CardHeader>
-                  <CardTitle className="text-base">
-                    참석자 목록 ({typedTbmDetail.attendeeCount}명)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {typedTbmDetail.attendees.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      참석자가 없습니다.
-                    </p>
-                  ) : (
-                    <ul className="space-y-2 text-sm">
-                      {typedTbmDetail.attendees.map((attendee) => (
-                        <li
-                          key={attendee.attendee.id}
-                          className="flex items-center justify-between rounded-md border px-3 py-2"
-                        >
-                          <span>{attendee.userName || "이름 없음"}</span>
-                          <span className="text-muted-foreground">
-                            {new Date(
-                              attendee.attendee.attendedAt,
-                            ).toLocaleString("ko-KR")}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </CardContent>
-              </Card>
+      {expandedTbmId && typedTbmDetail && (
+        <Card className="border-dashed">
+          <CardHeader>
+            <CardTitle className="text-base">
+              참석자 목록 ({typedTbmDetail.attendeeCount}명)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {typedTbmDetail.attendees.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                참석자가 없습니다.
+              </p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {typedTbmDetail.attendees.map((attendee) => (
+                  <li
+                    key={attendee.attendee.id}
+                    className="flex items-center justify-between rounded-md border px-3 py-2"
+                  >
+                    <span>{attendee.userName || "이름 없음"}</span>
+                    <span className="text-muted-foreground">
+                      {new Date(attendee.attendee.attendedAt).toLocaleString(
+                        "ko-KR",
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             )}
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       <AlertDialog
         open={!!deleteTbmId}

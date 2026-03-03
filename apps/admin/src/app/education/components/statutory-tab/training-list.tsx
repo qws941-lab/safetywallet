@@ -12,11 +12,8 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
 } from "@safetywallet/ui";
+import { DataTable, type Column } from "@/components/data-table";
 import type { TrainingItem } from "../education-types";
 import {
   formatUnixDate,
@@ -45,87 +42,103 @@ export function TrainingList({
   onDeleteConfirm,
   onDeleteCancel,
 }: TrainingListProps) {
+  const columns: Column<TrainingItem>[] = [
+    {
+      key: "training.trainingName",
+      header: "교육명",
+      sortable: true,
+      render: (item) => (
+        <span className="font-medium">{item.training.trainingName}</span>
+      ),
+    },
+    {
+      key: "training.trainingType",
+      header: "교육유형",
+      sortable: true,
+      render: (item) => (
+        <Badge variant="outline">
+          {getTrainingTypeLabel(item.training.trainingType)}
+        </Badge>
+      ),
+    },
+    {
+      key: "userName",
+      header: "대상자",
+      sortable: true,
+      render: (item) => <span>{item.userName || "-"}</span>,
+    },
+    {
+      key: "training.trainingDate",
+      header: "교육일",
+      sortable: true,
+      render: (item) => (
+        <span>{formatUnixDate(item.training.trainingDate)}</span>
+      ),
+    },
+    {
+      key: "training.status",
+      header: "상태",
+      sortable: true,
+      render: (item) => (
+        <Badge variant="secondary">
+          {getTrainingStatusLabel(item.training.status ?? "SCHEDULED")}
+        </Badge>
+      ),
+    },
+    {
+      key: "training.expirationDate",
+      header: "유효기간",
+      sortable: true,
+      render: (item) => (
+        <span>{formatUnixDate(item.training.expirationDate)}</span>
+      ),
+    },
+    {
+      key: "_actions",
+      header: "관리",
+      render: (item) => (
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditTraining(item);
+            }}
+          >
+            수정
+          </Button>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeleteTraining(item.training.id);
+            }}
+            disabled={deleteMutation.isPending}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
+  if (isLoading) {
+    return <p className="text-sm text-muted-foreground">로딩 중...</p>;
+  }
+
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>법정교육 목록</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">로딩 중...</p>
-          ) : trainings.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              등록된 법정교육이 없습니다.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left">
-                    <th className="px-2 py-2">교육명</th>
-                    <th className="px-2 py-2">교육유형</th>
-                    <th className="px-2 py-2">대상자</th>
-                    <th className="px-2 py-2">교육일</th>
-                    <th className="px-2 py-2">상태</th>
-                    <th className="px-2 py-2">유효기간</th>
-                    <th className="px-2 py-2">관리</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {trainings.map((item) => (
-                    <tr key={item.training.id} className="border-b">
-                      <td className="px-2 py-2 font-medium">
-                        {item.training.trainingName}
-                      </td>
-                      <td className="px-2 py-2">
-                        <Badge variant="outline">
-                          {getTrainingTypeLabel(item.training.trainingType)}
-                        </Badge>
-                      </td>
-                      <td className="px-2 py-2">{item.userName || "-"}</td>
-                      <td className="px-2 py-2">
-                        {formatUnixDate(item.training.trainingDate)}
-                      </td>
-                      <td className="px-2 py-2">
-                        <Badge variant="secondary">
-                          {getTrainingStatusLabel(
-                            item.training.status ?? "SCHEDULED",
-                          )}
-                        </Badge>
-                      </td>
-                      <td className="px-2 py-2">
-                        {formatUnixDate(item.training.expirationDate)}
-                      </td>
-                      <td className="px-2 py-2">
-                        <div className="flex items-center gap-1">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => onEditTraining(item)}
-                          >
-                            수정
-                          </Button>
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => onDeleteTraining(item.training.id)}
-                            disabled={deleteMutation.isPending}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <DataTable
+        columns={columns}
+        data={trainings}
+        searchable
+        searchPlaceholder="법정교육 검색..."
+        emptyMessage="등록된 법정교육이 없습니다."
+      />
 
       <AlertDialog
         open={!!deleteTrainingId}

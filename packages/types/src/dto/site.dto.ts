@@ -15,6 +15,12 @@ export interface CreateSiteDto {
   requiresApproval?: boolean;
 }
 
+export interface UpdateSiteDto {
+  name?: string;
+  active?: boolean;
+  leaderboardEnabled?: boolean;
+}
+
 export interface SiteMemberDto {
   id: string;
   userId: string;

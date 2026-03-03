@@ -46,6 +46,18 @@ export interface EducationContentListDto {
   createdAt: string;
 }
 
+export interface UpdateEducationContentDto {
+  title?: string;
+  description?: string;
+  contentType?: EducationContentType;
+  contentUrl?: string;
+  thumbnailUrl?: string;
+  durationMinutes?: number;
+  externalSource?: "LOCAL" | "YOUTUBE" | "KOSHA";
+  externalId?: string;
+  sourceUrl?: string;
+}
+
 // === Quiz ===
 
 export interface CreateQuizDto {
@@ -57,6 +69,16 @@ export interface CreateQuizDto {
   pointsReward?: number;
   passingScore?: number;
   timeLimitMinutes?: number;
+}
+
+export interface UpdateQuizDto {
+  title?: string;
+  description?: string;
+  status?: QuizStatus;
+  pointsReward?: number;
+  passingScore?: number;
+  timeLimitMinutes?: number;
+  contentId?: string;
 }
 export interface QuizDto {
   id: string;
@@ -142,9 +164,14 @@ export interface CreateStatutoryTrainingDto {
 }
 
 export interface UpdateStatutoryTrainingDto {
-  status?: TrainingCompletionStatus;
-  completedDate?: string;
+  trainingType?: StatutoryTrainingType;
+  trainingName?: string;
+  trainingDate?: string;
+  expirationDate?: string;
+  provider?: string;
   certificateUrl?: string;
+  hoursCompleted?: number;
+  status?: TrainingCompletionStatus;
   notes?: string;
 }
 
@@ -186,6 +213,14 @@ export interface CreateTbmRecordDto {
   topic: string;
   content?: string;
   leaderId?: string;
+  weatherCondition?: string;
+  specialNotes?: string;
+}
+
+export interface UpdateTbmRecordDto {
+  date?: string;
+  topic?: string;
+  content?: string;
   weatherCondition?: string;
   specialNotes?: string;
 }

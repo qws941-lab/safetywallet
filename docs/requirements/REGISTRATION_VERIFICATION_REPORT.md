@@ -1,6 +1,6 @@
 # ALL-REGISTRATION-FLOWS VERIFICATION REPORT
 
-**Generated:** 2026-03-03 | **Last Updated:** 2026-03-03 (all fixes applied)
+**Generated:** 2026-03-03 | **Last Updated:** 2026-03-03 (all fixes applied + CRUD verification)
 **Scope:** Every creation/registration flow across 6 layers
 **Layers:** DB Schema → Zod Validator → API Route → Frontend Hook → Frontend Form → Shared DTO
 
@@ -8,11 +8,11 @@
 
 ## Summary
 
-| Severity   | Count | Description                                                             |
-| ---------- | ----- | ----------------------------------------------------------------------- |
-| ✅ FIXED   | 23    | 14 critical DTO + 3 legacy validators + 6 functional verification fixes |
-| 🟡 WARNING | 5     | Remaining: missing DTOs, minor phantom fields                           |
-| 🟢 OK      | 8     | Entities with full alignment across all layers                          |
+| Severity   | Count | Description                                                                                 |
+| ---------- | ----- | ------------------------------------------------------------------------------------------- |
+| ✅ FIXED   | 30    | 14 critical DTO + 3 legacy validators + 6 functional verification + 7 CRUD update DTO fixes |
+| 🟡 WARNING | 4     | Remaining: missing Create DTOs, deferred validator update                                   |
+| 🟢 OK      | 8     | Entities with full alignment across all layers                                              |
 
 ### Fixes Applied (2026-03-03)
 
@@ -64,6 +64,21 @@
 
 - `packages/types/src/__tests__/dto-shapes.test.ts` — Updated TBM/Content fixtures
 - `apps/api/src/validators/__tests__/schemas.test.ts` — Removed `UpdateTbmRecordSchema` test; updated `ManualCheckinSchema`/`CastVoteSchema` fixtures
+
+### Fixes Applied — CRUD Update DTO Verification Phase (2026-03-03)
+
+**Update DTOs fixed/added (4 files):**
+
+- `packages/types/src/dto/education.dto.ts` — Expanded `UpdateStatutoryTrainingDto` from 4→9 fields (added trainingType, trainingName, trainingDate, expirationDate, hoursCompleted); added `UpdateEducationContentDto` (9 fields), `UpdateQuizDto` (7 fields), `UpdateTbmRecordDto` (5 fields)
+- `packages/types/src/dto/user.dto.ts` — Fixed `UpdateProfileDto`: renamed `nameMasked` → `name` (client sends `name`, server computes `nameMasked`)
+- `packages/types/src/dto/site.dto.ts` — Added `UpdateSiteDto` (3 fields: name?, active?, leaderboardEnabled?)
+- `packages/types/src/dto/points.dto.ts` — Added `UpdatePolicyDto` (8 fields: name?, description?, defaultAmount?, minAmount?, maxAmount?, dailyLimit?, monthlyLimit?, isActive?)
+
+**Tests updated (1 file):**
+
+- `packages/types/src/__tests__/dto-shapes.test.ts` — Added imports/fixtures for all 6 new/changed Update DTOs (UpdateProfileDto, UpdateStatutoryTrainingDto, UpdateSiteDto, UpdatePolicyDto, UpdateEducationContentDto, UpdateQuizDto)
+
+**Verification:** 6/6 workspaces typecheck clean. 219 files, 1897 tests passing.
 
 ### Legend
 
@@ -559,14 +574,14 @@
 | 13  | TBM               | DTO `weatherInfo`/`safetyIssues` ≠ DB `weatherCondition`/`specialNotes`                          | Field name mismatches                             |
 | 14  | TBM               | `leaderId` missing from DTO                                                                      | Can't type leader assignment                      |
 
-### 🟡 WARNING — Partially Resolved (6/11 fixed, 5 remaining)
+### 🟡 WARNING — Partially Resolved (7/11 fixed, 4 remaining)
 
 | #   | Entity            | Issue                                                                                                                 |
-| --- | ----------------- | --------------------------------------------------------------------------------------------------------------------- |
+| --- | ----------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
 | 1   | Auth              | No `RegisterDto` in shared types                                                                                      |
 | 2   | Education Content | ~~`contentBody` + `sortOrder` are phantom fields (no DB column)~~ ✅ Removed from DTO and validator                   |
 | 3   | Quiz              | ~~Duplicate validators: `CreateQuizSchema` (legacy) vs `CreateQuizInputSchema` (actual)~~ ✅ Legacy removed           |
-| 4   | Quiz              | DTO missing `status` field                                                                                            |
+|     | 4                 | Quiz                                                                                                                  | ~~DTO missing `status` field~~ ✅ Added in P0 fix phase |
 | 5   | Statutory         | ~~Duplicate validators: `CreateStatutoryTrainingSchema` (legacy) vs `CreateStatutoryTrainingInputSchema`~~ ✅ Removed |
 | 6   | TBM               | ~~Duplicate validators: `CreateTbmRecordSchema` (legacy) vs `CreateTbmInputSchema` (actual)~~ ✅ Removed              |
 | 7   | TBM               | ~~`location` + `attendeeIds` are phantom fields in DTO~~ ✅ Removed from DTOs                                         |
@@ -593,10 +608,20 @@
 7. ✅ Removed legacy validators: `CreateQuizSchema`, `CreateStatutoryTrainingSchema`, `CreateTbmRecordSchema`.
 8. ⬜ `UpdateCourseSchema` still missing 5 fields — deferred (low impact, update path unused by admin).
 
-### ⬜ P2 — Missing DTOs (DEFERRED)
+### ✅ P1.5 — CRUD Update DTO Alignment (ALL COMPLETED)
 
-9. ⬜ `RegisterDto` — not critical (auth uses validator-only flow, no shared DTO consumers).
-10. ⬜ `CreatePolicyDto` — not critical (admin uses local type definition).
+9. ✅ **`UpdateStatutoryTrainingDto`** — Expanded from 4→9 fields to match validator + DB.
+10. ✅ **`UpdateProfileDto`** — Renamed `nameMasked` → `name` to match validator.
+11. ✅ **`UpdateSiteDto`** — New. 3 fields matching `UpdateSiteSchema`.
+12. ✅ **`UpdatePolicyDto`** — New. 8 fields matching `UpdatePolicySchema`.
+13. ✅ **`UpdateEducationContentDto`** — New. 9 fields matching `UpdateCourseSchema`.
+14. ✅ **`UpdateQuizDto`** — New. 7 fields matching `UpdateQuizInputSchema`.
+15. ✅ **`UpdateTbmRecordDto`** — New. 5 fields matching `UpdateTbmInputSchema`.
+
+### ⬜ P2 — Missing Create DTOs (DEFERRED)
+
+16. ⬜ `RegisterDto` — not critical (auth uses validator-only flow, no shared DTO consumers).
+17. ⬜ `CreatePolicyDto` — not critical (admin uses local type definition).
 
 ---
 

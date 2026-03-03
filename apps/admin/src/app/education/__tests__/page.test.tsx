@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import EducationPage from "../page";
 
 vi.mock("@safetywallet/ui", () => ({
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
   Card: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   CardContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   Button: ({

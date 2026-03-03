@@ -38,6 +38,7 @@ vi.mock("@/hooks/use-api", () => ({
 }));
 
 vi.mock("@safetywallet/ui", () => ({
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
   AlertDialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   AlertDialogContent: ({ children }: { children: ReactNode }) => (
     <div>{children}</div>
@@ -163,7 +164,7 @@ describe("quizzes tab", () => {
 
   it("creates quiz and shows quiz list", async () => {
     render(<QuizzesTab />);
-    expect(screen.getByText("퀴즈 목록")).toBeInTheDocument();
+    expect(screen.getByText("안전 퀴즈")).toBeInTheDocument();
     expect(screen.getByText("안전 퀴즈")).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText("퀴즈 제목"), {

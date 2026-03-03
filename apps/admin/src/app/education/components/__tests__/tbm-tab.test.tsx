@@ -29,6 +29,7 @@ vi.mock("@/hooks/use-api", () => ({
 }));
 
 vi.mock("@safetywallet/ui", () => ({
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
   AlertDialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   AlertDialogContent: ({ children }: { children: ReactNode }) => (
     <div>{children}</div>

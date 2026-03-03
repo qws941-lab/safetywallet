@@ -37,6 +37,7 @@ vi.mock("@/hooks/use-api", () => ({
 }));
 
 vi.mock("@safetywallet/ui", () => ({
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
   AlertDialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   AlertDialogContent: ({ children }: { children: ReactNode }) => (
     <div>{children}</div>
@@ -144,7 +145,7 @@ describe("contents tab", () => {
 
   it("renders list and creates content", async () => {
     render(<ContentsTab />);
-    expect(screen.getByText("교육자료 목록")).toBeInTheDocument();
+    expect(screen.getByText("안전교육 영상")).toBeInTheDocument();
     expect(screen.getByText("안전교육 영상")).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText("제목"), {

@@ -21,6 +21,11 @@ export default defineConfig({
     setupFiles: ["./src/__tests__/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
     css: false,
+    server: {
+      deps: {
+        inline: ["@safetywallet/ui"],
+      },
+    },
     alias: {
       "@/": path.resolve(__dirname, "./src") + "/",
     },

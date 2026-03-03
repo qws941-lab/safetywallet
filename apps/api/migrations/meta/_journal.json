@@ -106,6 +106,13 @@
       "when": 1771977412294,
       "tag": "0014_add_media_type_to_post_images",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1709424000000,
+      "tag": "0015_add_missing_indexes",
+      "breakpoints": true
     }
   ]
 }

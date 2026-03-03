@@ -231,6 +231,7 @@ export const siteMemberships = sqliteTable(
       table.siteId,
       table.status,
     ),
+    userIdx: index("site_memberships_user_idx").on(table.userId),
   }),
 );
 
@@ -428,6 +429,8 @@ export const actions = sqliteTable(
   },
   (table) => ({
     postIdx: index("actions_post_idx").on(table.postId),
+    assigneeIdx: index("actions_assignee_idx").on(table.assigneeId),
+    statusIdx: index("actions_status_idx").on(table.actionStatus),
   }),
 );
 

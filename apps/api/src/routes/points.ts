@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { drizzle } from "drizzle-orm/d1";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
 import { attendanceMiddleware } from "../middleware/attendance";
@@ -427,7 +427,7 @@ app.get("/leaderboard/:siteId", async (c) => {
       ? await db
           .select({ id: users.id, nameMasked: users.nameMasked })
           .from(users)
-          .where(sql`${users.id} IN ${userIds}`)
+          .where(inArray(users.id, userIds))
           .all()
       : [];
 

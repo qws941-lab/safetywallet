@@ -158,9 +158,6 @@ describe("use-points-api", () => {
       expect.objectContaining({ method: "PATCH" }),
     );
     expect(invalidateSpy).toHaveBeenCalledWith({
-      queryKey: ["admin", "policy", "policy-1"],
-    });
-    expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["admin", "policies", "site-9"],
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
@@ -183,12 +180,9 @@ describe("use-points-api", () => {
     });
 
     expect(invalidateSpy).toHaveBeenCalledWith({
-      queryKey: ["admin", "policy", "policy-2"],
-    });
-    expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ["admin", "policies", "site-5"],
     });
-    expect(invalidateSpy).toHaveBeenCalledTimes(2);
+    expect(invalidateSpy).toHaveBeenCalledTimes(1);
   });
 
   it("deletes policy and invalidates current site policies when available", async () => {

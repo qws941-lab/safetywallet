@@ -94,9 +94,6 @@ export function useUpdatePolicy() {
       }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({
-        queryKey: ["admin", "policy", data.policy.id],
-      });
-      queryClient.invalidateQueries({
         queryKey: ["admin", "policies", data.policy.siteId],
       });
       if (currentSiteId) {

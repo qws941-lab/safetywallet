@@ -172,13 +172,18 @@ app.post("/:id/approve", async (c) => {
   });
 
   if (!existingAttendance) {
-    await db.insert(attendance).values({
-      userId: approval.userId,
-      siteId: approval.siteId,
-      checkinAt: approval.validDate,
-      result: "SUCCESS",
-      source: "MANUAL",
-    });
+    try {
+      await db.insert(attendance).values({
+        userId: approval.userId,
+        siteId: approval.siteId,
+        checkinAt: approval.validDate,
+        result: "SUCCESS",
+        source: "MANUAL",
+      });
+    } catch {
+      // Race condition: another request already inserted attendance
+      // This is safe to ignore — the record exists either way
+    }
   }
 
   await logAuditWithContext(

@@ -136,6 +136,9 @@ describe("statutory tab", () => {
 
   it("creates statutory training", async () => {
     render(<StatutoryTab />);
+
+    fireEvent.click(screen.getByRole("button", { name: /교육 등록/ }));
+
     fireEvent.change(screen.getByPlaceholderText("대상자 사용자 ID"), {
       target: { value: "u1" },
     });

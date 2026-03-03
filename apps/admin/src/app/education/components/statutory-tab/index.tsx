@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useToast } from "@safetywallet/ui";
+import { Button, useToast } from "@safetywallet/ui";
+import { Plus, ChevronUp } from "lucide-react";
 import {
   useCreateStatutoryTraining,
   useStatutoryTrainings,
@@ -38,6 +39,7 @@ export function StatutoryTab() {
     null,
   );
   const [deleteTrainingId, setDeleteTrainingId] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
 
   const { data: trainingsData, isLoading } = useStatutoryTrainings();
   const createMutation = useCreateStatutoryTraining();
@@ -103,6 +105,7 @@ export function StatutoryTab() {
 
   const onEditTraining = (item: TrainingItem) => {
     setEditingTrainingId(item.training.id);
+    setShowForm(true);
     setTrainingForm({
       userId: item.training.userId,
       trainingType: item.training.trainingType,
@@ -129,16 +132,44 @@ export function StatutoryTab() {
 
   return (
     <div className="space-y-4">
-      <TrainingForm
-        trainingForm={trainingForm}
-        setTrainingForm={setTrainingForm}
-        editingTrainingId={editingTrainingId}
-        onSubmitTraining={onSubmitTraining}
-        onCancel={() => {
-          setEditingTrainingId(null);
-          setTrainingForm(INITIAL_FORM);
-        }}
-      />
+      <div className="flex items-center justify-end">
+        <Button
+          variant={showForm ? "outline" : "default"}
+          size="sm"
+          onClick={() => {
+            setShowForm(!showForm);
+            if (showForm) {
+              setEditingTrainingId(null);
+              setTrainingForm(INITIAL_FORM);
+            }
+          }}
+        >
+          {showForm ? (
+            <>
+              <ChevronUp className="mr-1 h-4 w-4" />
+              접기
+            </>
+          ) : (
+            <>
+              <Plus className="mr-1 h-4 w-4" />
+              교육 등록
+            </>
+          )}
+        </Button>
+      </div>
+      {showForm && (
+        <TrainingForm
+          trainingForm={trainingForm}
+          setTrainingForm={setTrainingForm}
+          editingTrainingId={editingTrainingId}
+          onSubmitTraining={onSubmitTraining}
+          onCancel={() => {
+            setEditingTrainingId(null);
+            setTrainingForm(INITIAL_FORM);
+            setShowForm(false);
+          }}
+        />
+      )}
       <TrainingList
         isLoading={isLoading}
         trainings={trainings}

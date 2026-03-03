@@ -165,7 +165,8 @@ describe("quizzes tab", () => {
   it("creates quiz and shows quiz list", async () => {
     render(<QuizzesTab />);
     expect(screen.getByText("안전 퀴즈")).toBeInTheDocument();
-    expect(screen.getByText("안전 퀴즈")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /퀴즈 등록/ }));
 
     fireEvent.change(screen.getByPlaceholderText("퀴즈 제목"), {
       target: { value: "신규 퀴즈" },

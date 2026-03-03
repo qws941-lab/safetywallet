@@ -146,7 +146,8 @@ describe("contents tab", () => {
   it("renders list and creates content", async () => {
     render(<ContentsTab />);
     expect(screen.getByText("안전교육 영상")).toBeInTheDocument();
-    expect(screen.getByText("안전교육 영상")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /자료 등록/ }));
 
     fireEvent.change(screen.getByPlaceholderText("제목"), {
       target: { value: "신규 교육" },
@@ -166,6 +167,7 @@ describe("contents tab", () => {
     });
 
     render(<ContentsTab />);
+    fireEvent.click(screen.getByRole("button", { name: /자료 등록/ }));
     fireEvent.click(screen.getByRole("button", { name: "▶️ YouTube" }));
 
     fireEvent.change(screen.getByPlaceholderText("YouTube URL"), {

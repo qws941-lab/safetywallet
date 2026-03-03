@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@safetywallet/ui";
+import { Plus, ChevronUp } from "lucide-react";
 import {
   useCreateTbmRecord,
   useUpdateTbmRecord,
@@ -25,6 +27,7 @@ export function TbmTab() {
   const currentSiteId = useAuthStore((s) => s.currentSiteId);
   const [tbmForm, setTbmForm] = useState<TbmFormState>(INITIAL_FORM);
   const [editingTbmId, setEditingTbmId] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
 
   const { data: tbmData, isLoading } = useTbmRecords();
   const createMutation = useCreateTbmRecord();
@@ -35,6 +38,7 @@ export function TbmTab() {
 
   const onEditTbm = (item: TbmRecordItem) => {
     setEditingTbmId(item.tbm.id);
+    setShowForm(true);
     setTbmForm({
       date: item.tbm.date,
       topic: item.tbm.topic,
@@ -88,19 +92,47 @@ export function TbmTab() {
 
   return (
     <div className="space-y-4">
-      <TbmForm
-        tbmForm={tbmForm}
-        setTbmForm={setTbmForm}
-        editingTbmId={editingTbmId}
-        currentSiteId={currentSiteId}
-        createMutation={createMutation}
-        updateMutation={updateMutation}
-        onSubmit={onCreateTbm}
-        onCancelEdit={() => {
-          setEditingTbmId(null);
-          setTbmForm(INITIAL_FORM);
-        }}
-      />
+      <div className="flex items-center justify-end">
+        <Button
+          variant={showForm ? "outline" : "default"}
+          size="sm"
+          onClick={() => {
+            setShowForm(!showForm);
+            if (showForm) {
+              setEditingTbmId(null);
+              setTbmForm(INITIAL_FORM);
+            }
+          }}
+        >
+          {showForm ? (
+            <>
+              <ChevronUp className="mr-1 h-4 w-4" />
+              접기
+            </>
+          ) : (
+            <>
+              <Plus className="mr-1 h-4 w-4" />
+              TBM 등록
+            </>
+          )}
+        </Button>
+      </div>
+      {showForm && (
+        <TbmForm
+          tbmForm={tbmForm}
+          setTbmForm={setTbmForm}
+          editingTbmId={editingTbmId}
+          currentSiteId={currentSiteId}
+          createMutation={createMutation}
+          updateMutation={updateMutation}
+          onSubmit={onCreateTbm}
+          onCancelEdit={() => {
+            setEditingTbmId(null);
+            setTbmForm(INITIAL_FORM);
+            setShowForm(false);
+          }}
+        />
+      )}
       <TbmList
         tbmRecords={tbmRecords}
         isLoading={isLoading}

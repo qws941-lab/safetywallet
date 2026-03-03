@@ -133,6 +133,9 @@ describe("tbm tab", () => {
 
   it("creates tbm record", async () => {
     render(<TbmTab />);
+
+    fireEvent.click(screen.getByRole("button", { name: /TBM 등록/ }));
+
     fireEvent.change(screen.getByPlaceholderText("주제"), {
       target: { value: "안전 점검" },
     });

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@safetywallet/ui";
+import { Plus, ChevronUp } from "lucide-react";
 import { useQuizzes, useQuiz, useDeleteQuiz } from "@/hooks/use-api";
 import { useToast } from "@safetywallet/ui";
 import type { QuizDetail, QuizItem } from "../education-types";
@@ -11,12 +13,14 @@ import { QuestionManagement } from "./question-management";
 export function QuizzesTab() {
   const [expandedQuizId, setExpandedQuizId] = useState<string | null>(null);
   const [editingQuiz, setEditingQuiz] = useState<QuizItem | null>(null);
+  const [showForm, setShowForm] = useState(false);
   const { toast } = useToast();
 
   const deleteQuizMutation = useDeleteQuiz();
 
   const handleEditQuiz = (quiz: QuizItem) => {
     setEditingQuiz(quiz);
+    setShowForm(true);
   };
 
   const handleDeleteQuiz = async (quizId: string) => {
@@ -45,10 +49,37 @@ export function QuizzesTab() {
 
   return (
     <div className="space-y-4">
-      <QuizRegistration
-        editingQuiz={editingQuiz}
-        onCancelEdit={() => setEditingQuiz(null)}
-      />
+      <div className="flex items-center justify-end">
+        <Button
+          variant={showForm ? "outline" : "default"}
+          size="sm"
+          onClick={() => {
+            setShowForm(!showForm);
+            if (showForm) setEditingQuiz(null);
+          }}
+        >
+          {showForm ? (
+            <>
+              <ChevronUp className="mr-1 h-4 w-4" />
+              접기
+            </>
+          ) : (
+            <>
+              <Plus className="mr-1 h-4 w-4" />
+              퀴즈 등록
+            </>
+          )}
+        </Button>
+      </div>
+      {showForm && (
+        <QuizRegistration
+          editingQuiz={editingQuiz}
+          onCancelEdit={() => {
+            setEditingQuiz(null);
+            setShowForm(false);
+          }}
+        />
+      )}
       <QuizList
         isLoading={isLoading}
         quizzes={quizzes}

@@ -60,3 +60,14 @@ export interface CreatePolicyDto {
   dailyLimit?: number;
   monthlyLimit?: number;
 }
+
+export interface UpdatePolicyDto {
+  name?: string;
+  description?: string;
+  defaultAmount?: number;
+  minAmount?: number;
+  maxAmount?: number;
+  dailyLimit?: number;
+  monthlyLimit?: number;
+  isActive?: boolean;
+}

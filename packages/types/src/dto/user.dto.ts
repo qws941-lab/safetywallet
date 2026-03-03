@@ -25,5 +25,5 @@ export interface UserProfileDto {
 }
 
 export interface UpdateProfileDto {
-  nameMasked?: string;
+  name?: string;
 }

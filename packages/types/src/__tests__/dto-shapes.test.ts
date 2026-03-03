@@ -74,6 +74,11 @@ import type {
   UpdateMemberStatusDto,
   UpdateProfileDto,
   UpdateStatutoryTrainingDto,
+  UpdateEducationContentDto,
+  UpdatePolicyDto,
+  UpdateQuizDto,
+  UpdateSiteDto,
+  UpdateTbmRecordDto,
   UserDto,
   UserProfileDto,
   VoteCandidateDto,
@@ -141,7 +146,7 @@ describe("DTO and envelope shapes", () => {
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-02T00:00:00.000Z",
     } satisfies UserProfileDto;
-    const updateProfile = { nameMasked: "홍길동" } satisfies UpdateProfileDto;
+    const updateProfile = { name: "홍길동" } satisfies UpdateProfileDto;
 
     expect(otpRequest.phone).toBeTruthy();
     expect(otpVerify.otpCode).toHaveLength(6);
@@ -151,7 +156,7 @@ describe("DTO and envelope shapes", () => {
     expect(me.todayAttendance?.status).toBe("SUCCESS");
     expect(user.role).toBe(UserRole.WORKER);
     expect(profile.canManageUsers).toBe(true);
-    expect(updateProfile.nameMasked).toBe("홍길동");
+    expect(updateProfile.name).toBe("홍길동");
   });
 
   it("validates site and post dto shapes with satisfies", () => {
@@ -168,6 +173,11 @@ describe("DTO and envelope shapes", () => {
       name: "부산현장",
       requiresApproval: true,
     } satisfies CreateSiteDto;
+    const updateSite = {
+      name: "수정현장",
+      active: false,
+      leaderboardEnabled: true,
+    } satisfies UpdateSiteDto;
     const member = {
       id: "m1",
       userId: "u1",
@@ -253,6 +263,7 @@ describe("DTO and envelope shapes", () => {
 
     expect(site.active).toBe(true);
     expect(createSite.requiresApproval).toBe(true);
+    expect(updateSite.active).toBe(false);
     expect(member.status).toBe(MembershipStatus.ACTIVE);
     expect(updateMember.status).toBe(MembershipStatus.LEFT);
     expect(stats.activeMembers).toBeGreaterThan(0);
@@ -338,6 +349,12 @@ describe("DTO and envelope shapes", () => {
       completionNote: "조치 완료",
       imageUrls: ["https://example.com/after.jpg"],
     } satisfies UpdateActionStatusDto;
+    const updatePolicy = {
+      name: "수정 정책",
+      description: "수정된 설명",
+      defaultAmount: 20,
+      isActive: false,
+    } satisfies UpdatePolicyDto;
 
     expect(reviewAction.action).toBe(ReviewAction.REQUEST_MORE);
     expect(review.admin.id).toBe("admin1");
@@ -349,6 +366,7 @@ describe("DTO and envelope shapes", () => {
     expect(historyFilter.page).toBe(1);
     expect(createAction.priority).toBe(ActionPriority.HIGH);
     expect(updateAction.actionStatus).toBe(ActionStatus.COMPLETED);
+    expect(updatePolicy.defaultAmount).toBe(20);
   });
 
   it("validates announcement and vote dto shapes with satisfies", () => {
@@ -475,6 +493,11 @@ describe("DTO and envelope shapes", () => {
       quizCount: 2,
       createdAt: "2026-01-01T00:00:00.000Z",
     } satisfies EducationContentListDto;
+    const updateContent = {
+      title: "수정된 교육",
+      contentType: EducationContentType.VIDEO,
+      durationMinutes: 30,
+    } satisfies UpdateEducationContentDto;
     const createQuiz = {
       siteId: "s1",
       contentId: "ec1",
@@ -516,6 +539,11 @@ describe("DTO and envelope shapes", () => {
       attemptCount: 0,
       createdAt: "2026-01-01T00:00:00.000Z",
     } satisfies QuizListDto;
+    const updateQuiz = {
+      title: "수정 퀴즈",
+      status: QuizStatus.PUBLISHED,
+      passingScore: 90,
+    } satisfies UpdateQuizDto;
     const submitAttempt = {
       quizId: "quiz1",
       siteId: "s1",
@@ -556,9 +584,14 @@ describe("DTO and envelope shapes", () => {
       notes: "메모",
     } satisfies CreateStatutoryTrainingDto;
     const updateTraining = {
-      status: TrainingCompletionStatus.COMPLETED,
-      completedDate: "2026-01-10",
+      trainingType: StatutoryTrainingType.SPECIAL,
+      trainingName: "특별교육 수정",
+      trainingDate: "2026-01-10",
+      expirationDate: "2027-01-10",
+      provider: "안전기관",
       certificateUrl: "https://example.com/cert.pdf",
+      hoursCompleted: 8,
+      status: TrainingCompletionStatus.COMPLETED,
       notes: "완료",
     } satisfies UpdateStatutoryTrainingDto;
     const training = {
@@ -656,14 +689,16 @@ describe("DTO and envelope shapes", () => {
     expect(createContent.contentType).toBe(EducationContentType.VIDEO);
     expect(content.isActive).toBe(true);
     expect(contentList.quizCount).toBe(2);
+    expect(updateContent.durationMinutes).toBe(30);
     expect(createQuiz.passingScore).toBe(80);
     expect(quiz.status).toBe(QuizStatus.PUBLISHED);
     expect(quizList.status).toBe(QuizStatus.DRAFT);
+    expect(updateQuiz.passingScore).toBe(90);
     expect(submitAttempt.answers[0]).toBe(0);
     expect(attempt.passed).toBe(true);
     expect(attemptFilter.limit).toBe(20);
     expect(createTraining.trainingType).toBe(StatutoryTrainingType.NEW_WORKER);
-    expect(updateTraining.status).toBe(TrainingCompletionStatus.COMPLETED);
+    expect(updateTraining.trainingType).toBe(StatutoryTrainingType.SPECIAL);
     expect(training.status).toBe(TrainingCompletionStatus.SCHEDULED);
     expect(trainingFilter.status).toBe(TrainingCompletionStatus.EXPIRED);
     expect(createTbm.leaderId).toBe("u1");

@@ -1,9 +1,13 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { useEducationContent } from "@/hooks/use-api";
+import {
+  useEducationCompletionStatus,
+  useEducationContent,
+  useSubmitEducationCompletion,
+} from "@/hooks/use-api";
 import { useTranslation } from "@/hooks/use-translation";
 import { Header } from "@/components/header";
 import { BottomNav } from "@/components/bottom-nav";
@@ -15,6 +19,15 @@ import {
   Badge,
   Skeleton,
   Button,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  useToast,
 } from "@safetywallet/ui";
 import {
   FileText,
@@ -22,6 +35,8 @@ import {
   Link as LinkIcon,
   Download,
   Calendar,
+  PenLine,
+  CheckCircle2,
 } from "lucide-react";
 
 function LoadingState() {
@@ -77,11 +92,93 @@ function EducationDetailContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id") || "";
   const { data, isLoading, error } = useEducationContent(id);
+  const { data: completionData, isLoading: isCompletionLoading } =
+    useEducationCompletionStatus(id);
+  const { mutate: submitCompletion, isPending: isSubmitting } =
+    useSubmitEducationCompletion();
+  const { toast } = useToast();
+  const [signatureOpen, setSignatureOpen] = useState(false);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasStroke, setHasStroke] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const getContentTypeLabel = (contentType: string) => {
     const typeKey = `education.contentTypes.${contentType}` as const;
     return t(typeKey) || contentType;
   };
+
+  const clearSignature = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHasStroke(false);
+  };
+
+  const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    ctx.strokeStyle = "#111827";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    setIsDrawing(true);
+  };
+
+  const drawSignature = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+    ctx.stroke();
+    setHasStroke(true);
+  };
+
+  const endDrawing = () => {
+    setIsDrawing(false);
+  };
+
+  const handleSubmitSignature = () => {
+    if (!id) return;
+    if (!canvasRef.current) return;
+    if (!hasStroke) {
+      toast({
+        title: t("education.signature.needStroke"),
+        variant: "destructive",
+      });
+      return;
+    }
+    const dataUrl = canvasRef.current.toDataURL("image/png");
+    submitCompletion(
+      { contentId: id, signature: dataUrl },
+      {
+        onSuccess: () => {
+          toast({ title: t("education.signature.toastSaved") });
+          setSignatureOpen(false);
+        },
+        onError: () => {
+          toast({
+            title: t("education.signature.toastError"),
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
+
+  useEffect(() => {
+    if (signatureOpen) {
+      clearSignature();
+    }
+  }, [signatureOpen]);
 
   if (isLoading) {
     return <LoadingState />;
@@ -207,6 +304,60 @@ function EducationDetailContent() {
           </Button>
         )}
 
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <PenLine className="w-4 h-4" />
+              {t("education.signature.title")}
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {t("education.signature.subtitle")}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {completionData?.completion ? (
+              <div className="flex items-center gap-2 text-sm text-green-700">
+                <CheckCircle2 className="w-4 h-4" />
+                <span>
+                  {t("education.signature.completedAt")}{" "}
+                  {new Date(
+                    completionData.completion.signedAt,
+                  ).toLocaleString()}
+                </span>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {t("education.signature.notCompleted")}
+              </p>
+            )}
+
+            {completionData?.completion?.signatureData && (
+              <div className="rounded-md border bg-white p-2">
+                <img
+                  src={completionData.completion.signatureData}
+                  alt={t("education.signature.previewAlt")}
+                  className="w-full max-h-48 object-contain"
+                />
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Button
+                className="flex-1"
+                onClick={() => setSignatureOpen(true)}
+                disabled={isCompletionLoading}
+              >
+                <PenLine className="w-4 h-4" />
+                <span className="ml-1">
+                  {completionData?.completion
+                    ? t("education.signature.resign")
+                    : t("education.signature.open")}
+                </span>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <Button
           className="w-full mt-4"
           variant="secondary"
@@ -215,6 +366,58 @@ function EducationDetailContent() {
           {t("education.backToList")}
         </Button>
       </main>
+
+      <AlertDialog open={signatureOpen} onOpenChange={setSignatureOpen}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("education.signature.title")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("education.signature.modalHint")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="rounded-md border bg-white">
+            <canvas
+              ref={canvasRef}
+              width={600}
+              height={240}
+              className="w-full bg-white"
+              onPointerDown={startDrawing}
+              onPointerMove={drawSignature}
+              onPointerUp={endDrawing}
+              onPointerLeave={endDrawing}
+            />
+          </div>
+          <AlertDialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
+            <div className="flex gap-2">
+              <AlertDialogCancel asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setSignatureOpen(false)}
+                >
+                  {t("common.cancel")}
+                </Button>
+              </AlertDialogCancel>
+              <Button variant="outline" onClick={clearSignature}>
+                {t("education.signature.clear")}
+              </Button>
+            </div>
+            <AlertDialogAction asChild>
+              <Button
+                onClick={handleSubmitSignature}
+                disabled={isSubmitting}
+                className="w-full sm:w-auto"
+              >
+                {isSubmitting
+                  ? t("education.signature.submitting")
+                  : t("education.signature.submit")}
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <BottomNav />
     </div>

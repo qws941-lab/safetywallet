@@ -5,3 +5,4 @@ export * from "./use-education-contents-api";
 export * from "./use-education-quizzes-api";
 export * from "./use-education-statutory-api";
 export * from "./use-education-tbm-api";
+export * from "./use-education-completions";

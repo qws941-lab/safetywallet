@@ -7,6 +7,7 @@ import quizzesRoute from "./quizzes";
 import quizAttemptsRoute from "./quiz-attempts";
 import statutoryRoute from "./statutory";
 import tbmRoute from "./tbm";
+import completionsRoute from "./completions";
 
 const app = new Hono<AppType>();
 
@@ -65,5 +66,6 @@ app.route("/quizzes", quizzesRoute);
 app.route("/quizzes", quizAttemptsRoute);
 app.route("/statutory", statutoryRoute);
 app.route("/tbm", tbmRoute);
+app.route("/completions", completionsRoute);
 
 export default app;

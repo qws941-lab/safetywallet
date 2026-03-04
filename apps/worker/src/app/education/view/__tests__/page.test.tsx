@@ -1,10 +1,18 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import EducationViewPage from "@/app/education/view/page";
-import { useEducationContent } from "@/hooks/use-api";
+import {
+  useEducationCompletionStatus,
+  useEducationContent,
+  useSubmitEducationCompletion,
+} from "@/hooks/use-api";
 import { setMockSearchParams, getMockRouter } from "@/__tests__/mocks";
 
-vi.mock("@/hooks/use-api", () => ({ useEducationContent: vi.fn() }));
+vi.mock("@/hooks/use-api", () => ({
+  useEducationContent: vi.fn(),
+  useEducationCompletionStatus: vi.fn(),
+  useSubmitEducationCompletion: vi.fn(),
+}));
 vi.mock("@/hooks/use-translation", () => ({
   useTranslation: () => (key: string) => key,
 }));
@@ -20,6 +28,14 @@ describe("app/education/view/page", () => {
       data: undefined,
       isLoading: false,
       error: new Error("x"),
+    } as never);
+    vi.mocked(useEducationCompletionStatus).mockReturnValue({
+      data: { completion: null },
+      isLoading: false,
+    } as never);
+    vi.mocked(useSubmitEducationCompletion).mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
     } as never);
 
     render(<EducationViewPage />);
@@ -43,6 +59,14 @@ describe("app/education/view/page", () => {
       },
       isLoading: false,
       error: null,
+    } as never);
+    vi.mocked(useEducationCompletionStatus).mockReturnValue({
+      data: { completion: null },
+      isLoading: false,
+    } as never);
+    vi.mocked(useSubmitEducationCompletion).mockReturnValue({
+      mutate: vi.fn(),
+      isPending: false,
     } as never);
 
     render(<EducationViewPage />);

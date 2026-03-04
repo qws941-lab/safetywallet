@@ -311,39 +311,45 @@ function QuizTakeContent() {
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {questionType === "SINGLE_CHOICE" &&
-                    options.map((option: string, optIdx: number) => (
-                      <div
-                        key={`${q.id}-single-${optIdx}`}
-                        role="radio"
-                        aria-checked={answer === optIdx}
-                        tabIndex={0}
-                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                          answer === optIdx
-                            ? "border-primary bg-primary/5"
-                            : "border-gray-200 hover:bg-gray-50"
-                        }`}
-                        onClick={() => handleAnswerSelect(q.id, optIdx)}
-                        onKeyDown={(e) => {
-                          if (e.key === " " || e.key === "Enter") {
-                            e.preventDefault();
-                            handleAnswerSelect(q.id, optIdx);
-                          }
-                        }}
-                      >
+                    options.map((option: string, optIdx: number) => {
+                      const selected = answer === optIdx;
+                      return (
                         <div
-                          className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                            answer === optIdx
-                              ? "border-primary"
-                              : "border-gray-400"
+                          key={`${q.id}-single-${optIdx}`}
+                          role="radio"
+                          aria-checked={selected}
+                          tabIndex={0}
+                          className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                            selected
+                              ? "border-primary bg-primary/10 ring-2 ring-primary/40 shadow-sm"
+                              : "border-gray-200 hover:bg-gray-50"
                           }`}
+                          onClick={() => handleAnswerSelect(q.id, optIdx)}
+                          onKeyDown={(e) => {
+                            if (e.key === " " || e.key === "Enter") {
+                              e.preventDefault();
+                              handleAnswerSelect(q.id, optIdx);
+                            }
+                          }}
                         >
-                          {answer === optIdx && (
-                            <div className="w-2 h-2 rounded-full bg-primary" />
+                          <div
+                            className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                              selected ? "border-primary" : "border-gray-400"
+                            }`}
+                          >
+                            {selected && (
+                              <div className="w-2 h-2 rounded-full bg-primary" />
+                            )}
+                          </div>
+                          <span className="text-sm flex-1 break-words">
+                            {option}
+                          </span>
+                          {selected && (
+                            <CheckCircle2 className="w-4 h-4 text-primary" />
                           )}
                         </div>
-                        <span className="text-sm">{option}</span>
-                      </div>
-                    ))}
+                      );
+                    })}
 
                   {questionType === "OX" && (
                     <div className="grid grid-cols-2 gap-3">
@@ -351,7 +357,7 @@ function QuizTakeContent() {
                         type="button"
                         className={`rounded-lg border px-4 py-6 text-xl font-bold transition-colors ${
                           answer === 0
-                            ? "border-primary bg-primary/10 text-primary"
+                            ? "border-primary bg-primary/10 text-primary shadow-sm ring-2 ring-primary/30"
                             : "border-gray-200 hover:bg-gray-50"
                         }`}
                         onClick={() => handleAnswerSelect(q.id, 0)}
@@ -362,7 +368,7 @@ function QuizTakeContent() {
                         type="button"
                         className={`rounded-lg border px-4 py-6 text-xl font-bold transition-colors ${
                           answer === 1
-                            ? "border-primary bg-primary/10 text-primary"
+                            ? "border-primary bg-primary/10 text-primary shadow-sm ring-2 ring-primary/30"
                             : "border-gray-200 hover:bg-gray-50"
                         }`}
                         onClick={() => handleAnswerSelect(q.id, 1)}
@@ -384,7 +390,7 @@ function QuizTakeContent() {
                           tabIndex={0}
                           className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                             selected
-                              ? "border-primary bg-primary/5"
+                              ? "border-primary bg-primary/10 ring-2 ring-primary/40 shadow-sm"
                               : "border-gray-200 hover:bg-gray-50"
                           }`}
                           onClick={() => handleMultiChoiceToggle(q.id, optIdx)}
@@ -406,7 +412,12 @@ function QuizTakeContent() {
                               <div className="w-2 h-2 rounded-sm bg-white" />
                             )}
                           </div>
-                          <span className="text-sm">{option}</span>
+                          <span className="text-sm flex-1 break-words">
+                            {option}
+                          </span>
+                          {selected && (
+                            <CheckCircle2 className="w-4 h-4 text-primary" />
+                          )}
                         </div>
                       );
                     })}

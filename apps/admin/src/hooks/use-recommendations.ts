@@ -43,6 +43,7 @@ export function useRecommendations(
   limit = 20,
   startDate?: string,
   endDate?: string,
+  sort: "CREATED_DESC" | "RECOMMENDED_NAME_ASC" = "RECOMMENDED_NAME_ASC",
 ) {
   const siteId = useAuthStore((s) => s.currentSiteId);
 
@@ -55,6 +56,7 @@ export function useRecommendations(
       limit,
       startDate,
       endDate,
+      sort,
     ],
     queryFn: () => {
       const params = new URLSearchParams();
@@ -63,6 +65,7 @@ export function useRecommendations(
       params.set("limit", String(limit));
       if (startDate) params.set("startDate", startDate);
       if (endDate) params.set("endDate", endDate);
+      if (sort) params.set("sort", sort);
       return apiFetch<RecommendationListResponse>(
         `/admin/recommendations?${params}`,
       );

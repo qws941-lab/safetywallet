@@ -9,6 +9,7 @@ import {
   useEducationContents,
   useYouTubeOembed,
 } from "@/hooks/use-api";
+import { useEducationCompletions } from "@/hooks/use-education-completions";
 
 const toastMock = vi.fn();
 const createAsyncMock = vi.fn();
@@ -34,6 +35,10 @@ vi.mock("@/hooks/use-api", () => ({
   useUpdateEducationContent: vi.fn(),
   useEducationContents: vi.fn(),
   useYouTubeOembed: vi.fn(),
+}));
+
+vi.mock("@/hooks/use-education-completions", () => ({
+  useEducationCompletions: vi.fn(),
 }));
 
 vi.mock("@safetywallet/ui", () => ({
@@ -78,6 +83,7 @@ vi.mock("@safetywallet/ui", () => ({
   CardHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   CardTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
   CardContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  CardDescription: ({ children }: { children: ReactNode }) => <p>{children}</p>,
   Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => (
     <input {...props} />
   ),
@@ -93,6 +99,7 @@ vi.mock("@safetywallet/ui", () => ({
   ),
   SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   useToast: () => ({ toast: toastMock }),
+  Skeleton: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }));
 
 const mockUseEducationContents = vi.mocked(useEducationContents);
@@ -100,6 +107,7 @@ const mockUseCreateEducationContent = vi.mocked(useCreateEducationContent);
 const mockUseDeleteEducationContent = vi.mocked(useDeleteEducationContent);
 const mockUseUpdateEducationContent = vi.mocked(useUpdateEducationContent);
 const mockUseYouTubeOembed = vi.mocked(useYouTubeOembed);
+const mockUseEducationCompletions = vi.mocked(useEducationCompletions);
 
 describe("contents tab", () => {
   beforeEach(() => {
@@ -141,11 +149,18 @@ describe("contents tab", () => {
       mutateAsync: updateAsyncMock,
       isPending: false,
     } as never);
+    mockUseEducationCompletions.mockReturnValue({
+      data: {
+        items: [],
+        pagination: { page: 1, total: 0, limit: 20, totalPages: 0 },
+      },
+      isLoading: false,
+    } as never);
   });
 
   it("renders list and creates content", async () => {
     render(<ContentsTab />);
-    expect(screen.getByText("안전교육 영상")).toBeInTheDocument();
+    expect(screen.getAllByText("안전교육 영상")[0]).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /자료 등록/ }));
 

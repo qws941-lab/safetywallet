@@ -12,6 +12,8 @@ import {
   useDeleteActionImage,
   useEducationContent,
   useEducationContents,
+  useEducationCompletionStatus,
+  useSubmitEducationCompletion,
   useLeaveSite,
   useMyActions,
   useMyQuizAttempts,
@@ -465,6 +467,67 @@ describe("use-api hooks", () => {
       queryKey: ["quiz-attempts", "q1"],
     });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ["quizzes"] });
+  });
+
+  it("education completion hooks fetch status and submit signature", async () => {
+    vi.mocked(apiFetch).mockImplementation((url, options) => {
+      if (url === "/education/completions/content-1/me") {
+        return Promise.resolve({
+          success: true,
+          data: { completion: null },
+          timestamp: "2026-01-01T00:00:00.000Z",
+        });
+      }
+      if (url === "/education/completions") {
+        return Promise.resolve({
+          success: true,
+          data: {
+            completion: {
+              id: "comp-1",
+              signedAt: "2026-01-01T00:00:00.000Z",
+              signatureData: "data:image/png;base64,abc",
+            },
+          },
+          timestamp: "2026-01-01T00:00:00.000Z",
+        });
+      }
+      return Promise.resolve({});
+    });
+
+    const { wrapper, queryClient } = createWrapper();
+    const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+    const status = renderHook(() => useEducationCompletionStatus("content-1"), {
+      wrapper,
+    });
+    const submit = renderHook(() => useSubmitEducationCompletion(), {
+      wrapper,
+    });
+
+    await waitFor(() => {
+      expect(status.result.current.data?.completion).toBeNull();
+    });
+
+    await act(async () => {
+      await submit.result.current.mutateAsync({
+        contentId: "content-1",
+        signature: "data:image/png;base64,signed",
+      });
+    });
+
+    expect(apiFetch).toHaveBeenCalledWith(
+      "/education/completions/content-1/me",
+    );
+    expect(apiFetch).toHaveBeenCalledWith("/education/completions", {
+      method: "POST",
+      body: JSON.stringify({
+        contentId: "content-1",
+        signature: "data:image/png;base64,signed",
+      }),
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ["education-completion", "content-1"],
+    });
   });
 
   it("tbm hooks fetch records and attendance mutation invalidates tbm list", async () => {

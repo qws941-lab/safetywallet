@@ -7,6 +7,7 @@ import { useEducationContents } from "@/hooks/use-api";
 import { ContentForm } from "./content-form";
 import { ContentList } from "./content-list";
 import type { EducationContentItem } from "../education-types";
+import { ContentCompletions } from "../content-completions";
 
 export function ContentsTab() {
   const [editingContentId, setEditingContentId] = useState<string | null>(null);
@@ -66,6 +67,7 @@ export function ContentsTab() {
         onEditContent={onEditContent}
         onDeleteContent={onDeleteContent}
       />
+      {contents.length > 0 && <ContentCompletions contents={contents} />}
     </div>
   );
 }

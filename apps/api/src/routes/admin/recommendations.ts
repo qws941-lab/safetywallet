@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, and, desc, gte, lte, count } from "drizzle-orm";
+import { eq, and, desc, gte, lte, count, asc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import type { Env, AuthContext } from "../../types";
 import { recommendations, users, sites } from "../../db/schema";
@@ -25,11 +25,16 @@ app.get(
       endDate: z.string().optional(),
       page: z.coerce.number().min(1).default(1),
       limit: z.coerce.number().min(1).max(100).default(20),
+      sort: z
+        .enum(["CREATED_DESC", "RECOMMENDED_NAME_ASC"])
+        .default("CREATED_DESC")
+        .optional(),
     }),
   ),
   async (c) => {
     const db = drizzle(c.env.DB, { schema });
-    const { siteId, startDate, endDate, page, limit } = c.req.valid("query");
+    const { siteId, startDate, endDate, page, limit, sort } =
+      c.req.valid("query");
 
     const conditions: ReturnType<typeof eq>[] = [];
     if (siteId) conditions.push(eq(recommendations.siteId, siteId));
@@ -60,7 +65,11 @@ app.get(
         .leftJoin(users, eq(recommendations.recommenderId, users.id))
         .leftJoin(sites, eq(recommendations.siteId, sites.id))
         .where(where)
-        .orderBy(desc(recommendations.createdAt))
+        .orderBy(
+          sort === "RECOMMENDED_NAME_ASC"
+            ? asc(recommendations.recommendedName)
+            : desc(recommendations.createdAt),
+        )
         .limit(limit)
         .offset(offset),
       db.select({ count: count() }).from(recommendations).where(where),

@@ -174,7 +174,8 @@ describe("vote detail page", () => {
   it("deletes candidate and invalidates query", async () => {
     render(<VoteDetailPage />);
 
-    fireEvent.click(screen.getByRole("button", { name: "삭제" }));
+    const deleteButtons = screen.getAllByRole("button", { name: "삭제" });
+    fireEvent.click(deleteButtons[1]);
 
     await waitFor(() => {
       expect(mutateMock).toHaveBeenCalled();

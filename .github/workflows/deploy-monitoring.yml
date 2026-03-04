@@ -44,7 +44,7 @@ jobs:
             if [ "$status" = "$expected" ]; then
               echo "- [OK] $name | status=$status | latency=${latency}s | $url" >> "$REPORT_FILE"
             elif [ "$status" = "403" ]; then
-              echo "- [OK] $name | status=403 (Cloudflare challenge, runner blocked) | latency=${latency}s | $url" >> "$REPORT_FILE"
+              echo "- [WARN] $name | status=403 (possible Cloudflare challenge or auth failure) | latency=${latency}s | $url" >> "$REPORT_FILE"
             else
               FAILED=$((FAILED + 1))
               echo "- [FAIL] $name | status=$status | expected=$expected | latency=${latency}s | $url" >> "$REPORT_FILE"

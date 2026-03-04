@@ -7,8 +7,8 @@ const app = new Hono<{ Bindings: Env; Variables: { auth: AuthContext } }>();
 const GITHUB_OWNER = "qws941";
 const GITHUB_REPO = "safetywallet";
 
-/** GET /admin/issues — list GitHub issues */
-app.get("/admin/issues", requireAdmin, async (c) => {
+/** GET /issues — list GitHub issues */
+app.get("/issues", requireAdmin, async (c) => {
   const token = c.env.GITHUB_TOKEN;
   if (!token) {
     return c.json(
@@ -57,8 +57,8 @@ app.get("/admin/issues", requireAdmin, async (c) => {
   return c.json({ success: true, data: issues });
 });
 
-/** POST /admin/issues — create GitHub issue with optional codex assignment */
-app.post("/admin/issues", requireAdmin, async (c) => {
+/** POST /issues — create GitHub issue with optional codex assignment */
+app.post("/issues", requireAdmin, async (c) => {
   const token = c.env.GITHUB_TOKEN;
   if (!token) {
     return c.json(

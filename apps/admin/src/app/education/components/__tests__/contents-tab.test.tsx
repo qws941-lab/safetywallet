@@ -8,6 +8,7 @@ import {
   useUpdateEducationContent,
   useEducationContents,
   useYouTubeOembed,
+  useEducationCompletions,
 } from "@/hooks/use-api";
 
 const toastMock = vi.fn();
@@ -34,6 +35,7 @@ vi.mock("@/hooks/use-api", () => ({
   useUpdateEducationContent: vi.fn(),
   useEducationContents: vi.fn(),
   useYouTubeOembed: vi.fn(),
+  useEducationCompletions: vi.fn(),
 }));
 
 vi.mock("@safetywallet/ui", () => ({
@@ -100,6 +102,7 @@ const mockUseCreateEducationContent = vi.mocked(useCreateEducationContent);
 const mockUseDeleteEducationContent = vi.mocked(useDeleteEducationContent);
 const mockUseUpdateEducationContent = vi.mocked(useUpdateEducationContent);
 const mockUseYouTubeOembed = vi.mocked(useYouTubeOembed);
+const mockUseEducationCompletions = vi.mocked(useEducationCompletions);
 
 describe("contents tab", () => {
   beforeEach(() => {
@@ -140,6 +143,13 @@ describe("contents tab", () => {
     mockUseUpdateEducationContent.mockReturnValue({
       mutateAsync: updateAsyncMock,
       isPending: false,
+    } as never);
+    mockUseEducationCompletions.mockReturnValue({
+      data: {
+        items: [],
+        pagination: { page: 1, total: 0, limit: 20, totalPages: 0 },
+      },
+      isLoading: false,
     } as never);
   });
 

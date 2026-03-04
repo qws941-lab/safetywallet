@@ -120,6 +120,13 @@
       "when": 1709510400000,
       "tag": "0016_seed_education_contents",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1772591433342,
+      "tag": "0017_illegal_norman_osborn",
+      "breakpoints": true
     }
   ]
 }

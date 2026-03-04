@@ -351,6 +351,22 @@
       "quizResults": "测验结果",
       "content": "内容"
     },
+    "signature": {
+      "title": "完成签名",
+      "subtitle": "完成培训后，请签名作为确认。",
+      "open": "签名并标记完成",
+      "resign": "重新签名",
+      "clear": "清除",
+      "submit": "保存签名",
+      "submitting": "正在保存签名...",
+      "needStroke": "请先完成签名。",
+      "toastSaved": "签名已保存。",
+      "toastError": "保存签名失败，请重试。",
+      "notCompleted": "尚未完成签名。",
+      "completedAt": "签名时间",
+      "previewAlt": "签名预览",
+      "modalHint": "请在框内签名以确认完成。"
+    },
     "quiz": {
       "title": "测验",
       "question": "问题",

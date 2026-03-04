@@ -1281,6 +1281,36 @@ export const quizAttempts = sqliteTable(
   }),
 );
 
+export const educationCompletions = sqliteTable(
+  "education_completions",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    contentId: text("content_id")
+      .notNull()
+      .references(() => educationContents.id, { onDelete: "cascade" }),
+    siteId: text("site_id")
+      .notNull()
+      .references(() => sites.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    signatureData: text("signature_data"),
+    signedAt: integer("signed_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+  },
+  (table) => ({
+    contentUserUnique: unique().on(table.contentId, table.userId),
+    siteIdx: index("education_completions_site_idx").on(table.siteId),
+    contentIdx: index("education_completions_content_idx").on(table.contentId),
+  }),
+);
+
 // Statutory Trainings - 법정 안전교육 이수 기록
 export const statutoryTrainings = sqliteTable(
   "statutory_trainings",
@@ -1409,6 +1439,7 @@ export const educationContentsRelations = relations(
       references: [users.id],
     }),
     quizzes: many(quizzes),
+    completions: many(educationCompletions),
   }),
 );
 
@@ -1447,6 +1478,24 @@ export const quizAttemptsRelations = relations(quizAttempts, ({ one }) => ({
     references: [sites.id],
   }),
 }));
+
+export const educationCompletionsRelations = relations(
+  educationCompletions,
+  ({ one }) => ({
+    content: one(educationContents, {
+      fields: [educationCompletions.contentId],
+      references: [educationContents.id],
+    }),
+    user: one(users, {
+      fields: [educationCompletions.userId],
+      references: [users.id],
+    }),
+    site: one(sites, {
+      fields: [educationCompletions.siteId],
+      references: [sites.id],
+    }),
+  }),
+);
 
 export const statutoryTrainingsRelations = relations(
   statutoryTrainings,

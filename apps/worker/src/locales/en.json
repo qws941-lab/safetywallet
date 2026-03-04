@@ -351,6 +351,22 @@
       "quizResults": "Quiz Results",
       "content": "Content"
     },
+    "signature": {
+      "title": "Completion Signature",
+      "subtitle": "After finishing the training, sign to confirm completion.",
+      "open": "Sign and mark as completed",
+      "resign": "Sign again",
+      "clear": "Clear",
+      "submit": "Save signature",
+      "submitting": "Saving signature...",
+      "needStroke": "Please add your signature.",
+      "toastSaved": "Signature has been saved.",
+      "toastError": "Failed to save signature. Please try again.",
+      "notCompleted": "No completion signature yet.",
+      "completedAt": "Signed at",
+      "previewAlt": "Signature preview",
+      "modalHint": "Sign inside the box to confirm completion."
+    },
     "quiz": {
       "title": "Quiz",
       "question": "Question",

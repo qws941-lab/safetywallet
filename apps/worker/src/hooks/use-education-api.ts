@@ -191,6 +191,53 @@ export function useMyQuizAttempts(quizId: string) {
   });
 }
 
+export function useEducationCompletionStatus(contentId: string) {
+  return useQuery({
+    queryKey: ["education-completion", contentId],
+    enabled: !!contentId,
+    queryFn: () =>
+      apiFetch<
+        ApiResponse<{
+          completion: {
+            id: string;
+            signedAt: string | number | Date;
+            signatureData?: string | null;
+          } | null;
+        }>
+      >(`/education/completions/${contentId}/me`).then((r) => r.data),
+  });
+}
+
+export function useSubmitEducationCompletion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      contentId,
+      signature,
+    }: {
+      contentId: string;
+      signature: string;
+    }) =>
+      apiFetch<
+        ApiResponse<{
+          completion: {
+            id: string;
+            signedAt: string | number | Date;
+            signatureData?: string | null;
+          };
+        }>
+      >("/education/completions", {
+        method: "POST",
+        body: JSON.stringify({ contentId, signature }),
+      }).then((r) => r.data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["education-completion", variables.contentId],
+      });
+    },
+  });
+}
+
 export function useTbmRecords(siteId: string) {
   return useQuery({
     queryKey: ["tbm-records", siteId],

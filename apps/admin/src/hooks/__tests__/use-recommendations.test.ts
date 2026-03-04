@@ -41,11 +41,13 @@ describe("use-recommendations", () => {
     );
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(mockApiFetch).toHaveBeenCalledWith(
-      expect.stringContaining(
-        "/admin/recommendations?siteId=site-1&page=1&limit=20&startDate=2026-02-01&endDate=2026-02-15",
-      ),
-    );
+    const url = mockApiFetch.mock.calls[0][0] as string;
+    expect(url).toContain("siteId=site-1");
+    expect(url).toContain("page=1");
+    expect(url).toContain("limit=20");
+    expect(url).toContain("startDate=2026-02-01");
+    expect(url).toContain("endDate=2026-02-15");
+    expect(url).toContain("sort=RECOMMENDED_NAME_ASC");
   });
 
   it("fetches recommendation stats", async () => {
@@ -111,13 +113,34 @@ describe("use-recommendations", () => {
       pagination: { page: 1 },
     });
     const { wrapper } = createWrapper();
-    const { result } = renderHook(() => useRecommendations(1, 10), { wrapper });
+    const { result } = renderHook(() => useRecommendations(1, 10), {
+      wrapper,
+    });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     const url = mockApiFetch.mock.calls[0][0] as string;
     expect(url).toContain("siteId=site-1");
+    expect(url).toContain("sort=RECOMMENDED_NAME_ASC");
     expect(url).not.toContain("startDate");
     expect(url).not.toContain("endDate");
+  });
+
+  it("honors sort override", async () => {
+    mockApiFetch.mockResolvedValue({
+      items: [],
+      pagination: { page: 1 },
+    });
+    const { wrapper } = createWrapper();
+    renderHook(
+      () => useRecommendations(2, 15, undefined, undefined, "CREATED_DESC"),
+      { wrapper },
+    );
+
+    await waitFor(() => expect(mockApiFetch).toHaveBeenCalled());
+    const url = mockApiFetch.mock.calls[0][0] as string;
+    expect(url).toContain("sort=CREATED_DESC");
+    expect(url).toContain("page=2");
+    expect(url).toContain("limit=15");
   });
 
   it("fetches recommendation stats without dates", async () => {

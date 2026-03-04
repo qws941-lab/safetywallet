@@ -368,6 +368,22 @@
       "quizResults": "퀴즈 결과",
       "content": "콘텐츠"
     },
+    "signature": {
+      "title": "수료 서명",
+      "subtitle": "교육을 완료했다면 서명으로 수료를 남겨주세요.",
+      "open": "서명하고 수료 처리",
+      "resign": "다시 서명하기",
+      "clear": "지우기",
+      "submit": "서명 완료",
+      "submitting": "서명 저장 중...",
+      "needStroke": "서명을 남겨주세요.",
+      "toastSaved": "수료 서명이 저장되었습니다.",
+      "toastError": "서명 저장에 실패했습니다. 다시 시도해 주세요.",
+      "notCompleted": "아직 서명이 완료되지 않았습니다.",
+      "completedAt": "서명 완료",
+      "previewAlt": "수료 서명 이미지",
+      "modalHint": "화면에서 서명을 남겨주세요."
+    },
     "quiz": {
       "title": "퀴즈",
       "question": "질문",

@@ -138,11 +138,11 @@ describe("AnnouncementsPage", () => {
       toAnnouncementsResult({ data: [], isLoading: false }),
     );
     mockUseCreateAnnouncement.mockReturnValue({
-      mutate: createMutateMock,
+      mutateAsync: createMutateMock,
       isPending: false,
     } as never);
     mockUseUpdateAnnouncement.mockReturnValue({
-      mutate: updateMutateMock,
+      mutateAsync: updateMutateMock,
       isPending: false,
     } as never);
     mockUseDeleteAnnouncement.mockReturnValue({
@@ -166,11 +166,7 @@ describe("AnnouncementsPage", () => {
   });
 
   it("creates announcement and resets form on success", async () => {
-    createMutateMock.mockImplementation(
-      (_payload, options: { onSuccess?: () => void }) => {
-        options.onSuccess?.();
-      },
-    );
+    createMutateMock.mockResolvedValue({});
 
     render(<AnnouncementsPage />);
 
@@ -190,17 +186,12 @@ describe("AnnouncementsPage", () => {
           content: "헬멧 착용 필수",
           isPinned: false,
         }),
-        expect.any(Object),
       );
     });
   });
 
   it("edits announcement and submits update", async () => {
-    updateMutateMock.mockImplementation(
-      (_payload, options: { onSuccess?: () => void }) => {
-        options.onSuccess?.();
-      },
-    );
+    updateMutateMock.mockResolvedValue({});
     mockUseAdminAnnouncements.mockReturnValueOnce(
       toAnnouncementsResult({
         isLoading: false,
@@ -235,8 +226,9 @@ describe("AnnouncementsPage", () => {
           id: "ann-1",
           title: "수정 공지",
           content: "수정 내용",
+          isPinned: true,
+          scheduledAt: null,
         }),
-        expect.any(Object),
       );
     });
   });

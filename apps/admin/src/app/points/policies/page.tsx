@@ -33,7 +33,13 @@ export default function PointPoliciesPage() {
 
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!currentSiteId) return;
+    if (!currentSiteId) {
+      toast({
+        variant: "destructive",
+        description: "현장을 먼저 선택한 뒤 정책을 생성해주세요.",
+      });
+      return;
+    }
     try {
       const data = extractCreateData(
         new FormData(e.currentTarget),
@@ -88,7 +94,7 @@ export default function PointPoliciesPage() {
     <div className="p-8 space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">포인트 정책 관리</h1>
-        <Button onClick={() => setIsCreateOpen(true)}>
+        <Button onClick={() => setIsCreateOpen(true)} disabled={!currentSiteId}>
           <Plus className="mr-2 h-4 w-4" />
           정책 추가
         </Button>

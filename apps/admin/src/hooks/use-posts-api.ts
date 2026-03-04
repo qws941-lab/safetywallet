@@ -73,6 +73,8 @@ export function useAdminPosts(filters: PostFilters) {
         (res) => res.posts,
       ),
     enabled: !!siteId,
+    refetchInterval: 10000,
+    staleTime: 5000,
   });
 }
 

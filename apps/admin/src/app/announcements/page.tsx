@@ -58,25 +58,41 @@ export default function AnnouncementsPage() {
     setScheduledAt("");
   };
 
-  const handleSubmit = () => {
-    if (!title || !content) return;
+  const handleSubmit = async () => {
+    if (!title || !content) {
+      toast({
+        variant: "destructive",
+        description: "제목과 내용을 모두 입력해주세요.",
+      });
+      return;
+    }
 
-    if (editingId) {
-      updateMutation.mutate(
-        {
+    try {
+      if (editingId) {
+        await updateMutation.mutateAsync({
           id: editingId,
           title,
           content,
           isPinned,
           scheduledAt: scheduledAt || null,
-        },
-        { onSuccess: resetForm },
-      );
-    } else {
-      createMutation.mutate(
-        { title, content, isPinned, scheduledAt: scheduledAt || null },
-        { onSuccess: resetForm },
-      );
+        });
+        toast({ description: "공지사항이 수정되었습니다." });
+      } else {
+        await createMutation.mutateAsync({
+          title,
+          content,
+          isPinned,
+          scheduledAt: scheduledAt || null,
+        });
+        toast({ description: "새 공지가 등록되었습니다." });
+      }
+      resetForm();
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        description:
+          (err as Error).message || "공지 등록 중 문제가 발생했습니다.",
+      });
     }
   };
 
@@ -125,13 +141,15 @@ export default function AnnouncementsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">공지사항</h1>
-        {!showForm && (
-          <Button onClick={() => setShowForm(true)} className="gap-1">
-            <Plus size={16} />새 공지
-          </Button>
-        )}
+        <Button
+          size="lg"
+          className="gap-2 shadow-sm"
+          onClick={() => setShowForm(true)}
+        >
+          <Plus size={18} />새 공지
+        </Button>
       </div>
 
       {showForm && (

@@ -5,13 +5,14 @@
 - Workflow-file inventory + coupling notes only.
 - Parent `.github/AGENTS.md` owns top-level config scope.
 
-## WORKFLOW INVENTORY (16)
+## WORKFLOW INVENTORY (17)
 
 - `auto-merge-dependabot.yml` - `Auto-merge Dependabot`
 - `auto-merge.yml` - `Auto Merge`
 - `ci.yml` - `CI`
 - `codex-auto-issue.yml` - `Codex Auto-Issue`
 - `codex-triage.yml` - `Codex Auto-Label`
+- `codex-approve-runs.yml` - `Codex Approve Runs`
 - `commitlint.yml` - `Commitlint`
 - `deploy-monitoring.yml` - `Deployment Monitoring`
 - `e2e-auto-issue.yml` - `E2E Failure Issue`

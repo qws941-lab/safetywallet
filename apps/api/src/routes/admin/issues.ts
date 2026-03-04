@@ -53,7 +53,9 @@ app.get("/issues", requireAdmin, async (c) => {
     );
   }
 
-  const issues = await res.json();
+  const allItems = (await res.json()) as Record<string, unknown>[];
+  // GitHub Issues API returns both issues and PRs — filter out PRs
+  const issues = allItems.filter((item) => !item.pull_request);
   return c.json({ success: true, data: issues });
 });
 

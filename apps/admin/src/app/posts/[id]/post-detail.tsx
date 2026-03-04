@@ -78,7 +78,12 @@ export default function PostDetailPage() {
     <div className="space-y-6 max-w-3xl mx-auto w-full">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.back()}
+            aria-label="뒤로 가기"
+          >
             <ArrowLeft size={20} />
           </Button>
           <h1 className="text-2xl font-bold">제보 상세</h1>

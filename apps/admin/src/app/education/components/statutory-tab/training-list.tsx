@@ -48,7 +48,9 @@ export function TrainingList({
       header: "교육명",
       sortable: true,
       render: (item) => (
-        <span className="font-medium">{item.training.trainingName}</span>
+        <span className="font-medium break-words">
+          {item.training.trainingName}
+        </span>
       ),
     },
     {

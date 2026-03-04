@@ -181,8 +181,14 @@ export function registerListRoutes(app: AdminPostsApp) {
         .from(postImages)
         .where(eq(postImages.postId, postId))
         .orderBy(desc(postImages.createdAt))
+        .limit(100)
         .all(),
-      db.select().from(reviews).where(eq(reviews.postId, postId)).all(),
+      db
+        .select()
+        .from(reviews)
+        .where(eq(reviews.postId, postId))
+        .limit(100)
+        .all(),
     ]);
 
     return success(c, {

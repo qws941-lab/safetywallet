@@ -53,7 +53,9 @@ export function ContentList({
       key: "title",
       header: "제목",
       sortable: true,
-      render: (item) => <span className="font-medium">{item.title}</span>,
+      render: (item) => (
+        <span className="font-medium break-words">{item.title}</span>
+      ),
     },
     {
       key: "contentType",
@@ -88,7 +90,9 @@ export function ContentList({
       key: "description",
       header: "설명",
       render: (item) => (
-        <span className="text-muted-foreground">{item.description || "-"}</span>
+        <span className="text-muted-foreground break-words">
+          {item.description || "-"}
+        </span>
       ),
     },
     {

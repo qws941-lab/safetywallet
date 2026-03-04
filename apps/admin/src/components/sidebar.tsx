@@ -123,7 +123,10 @@ function SidebarNav({ collapsed }: { collapsed: boolean }) {
         </div>
       )}
 
-      <nav className="flex-1 space-y-1 overflow-y-auto p-2">
+      <nav
+        aria-label="메인 네비게이션"
+        className="flex-1 space-y-1 overflow-y-auto p-2"
+      >
         {navItems.map((item) => {
           const isActive = pathname?.startsWith(item.href) ?? false;
           const Icon = item.icon;
@@ -158,6 +161,7 @@ function SidebarNav({ collapsed }: { collapsed: boolean }) {
             !collapsed && "md:justify-start",
           )}
           onClick={handleLogout}
+          aria-label="로그아웃"
         >
           <LogOut size={20} />
           {!collapsed && <span className="hidden md:inline">로그아웃</span>}
@@ -210,6 +214,7 @@ export function Sidebar() {
           onClick={() => setCollapsed(!collapsed)}
           className="text-white hover:bg-slate-800"
           data-testid="mobile-menu-toggle"
+          aria-label={collapsed ? "메뉴 펼치기" : "메뉴 접기"}
         >
           {collapsed ? <Menu size={20} /> : <X size={20} />}
         </Button>

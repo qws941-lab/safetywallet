@@ -219,7 +219,9 @@ export default function AnnouncementsPage() {
                     {announcement.isPinned && (
                       <Pin size={16} className="text-primary" />
                     )}
-                    <h3 className="font-semibold">{announcement.title}</h3>
+                    <h3 className="font-semibold break-words">
+                      {announcement.title}
+                    </h3>
                     {announcement.isPinned && (
                       <Badge variant="secondary">고정</Badge>
                     )}

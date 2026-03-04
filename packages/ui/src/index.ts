@@ -82,3 +82,5 @@ export {
   SheetTitle,
   SheetDescription,
 } from "./components/sheet";
+
+export { ErrorBoundary } from "./components/error-boundary";

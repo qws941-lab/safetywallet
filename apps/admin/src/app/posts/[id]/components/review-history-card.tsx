@@ -33,7 +33,7 @@ export function ReviewHistoryCard({ reviews }: ReviewHistoryCardProps) {
                 </p>
               )}
               {review.comment && (
-                <p className="text-sm mt-1">{review.comment}</p>
+                <p className="text-sm mt-1 break-words">{review.comment}</p>
               )}
               {review.reasonCode && (
                 <p className="text-xs text-muted-foreground mt-1">

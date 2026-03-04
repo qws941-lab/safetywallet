@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { eq, and, desc, or, lte } from "drizzle-orm";
 import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
+import { rateLimitMiddleware } from "../middleware/rate-limit";
 import { attendanceMiddleware } from "../middleware/attendance";
 import { announcements, siteMemberships, users } from "../db/schema";
 import { success, error } from "../lib/response";
@@ -19,6 +20,9 @@ const app = new Hono<{
 }>();
 
 app.use("*", authMiddleware);
+
+const defaultRateLimit = rateLimitMiddleware();
+app.use("*", defaultRateLimit);
 
 async function getActiveMembership(
   db: ReturnType<typeof drizzle>,

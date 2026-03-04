@@ -72,7 +72,9 @@ export function TbmList({
       key: "tbm.topic",
       header: "주제",
       sortable: true,
-      render: (item) => <span className="font-medium">{item.tbm.topic}</span>,
+      render: (item) => (
+        <span className="font-medium break-words">{item.tbm.topic}</span>
+      ),
     },
     {
       key: "leaderName",

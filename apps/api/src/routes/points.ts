@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
+import { rateLimitMiddleware } from "../middleware/rate-limit";
 import { attendanceMiddleware } from "../middleware/attendance";
 import {
   pointsLedger,
@@ -16,6 +17,10 @@ import {
 import { success, error } from "../lib/response";
 import { logAuditWithContext } from "../lib/audit";
 import { AwardPointsSchema } from "../validators/schemas";
+import {
+  PointsSiteQuerySchema,
+  PointsLeaderboardQuerySchema,
+} from "../validators/query";
 
 const app = new Hono<{
   Bindings: Env;
@@ -38,6 +43,9 @@ interface QueryPointsParams {
 }
 
 app.use("*", authMiddleware);
+
+const defaultRateLimit = rateLimitMiddleware();
+app.use("*", defaultRateLimit);
 
 app.post("/award", zValidator("json", AwardPointsSchema), async (c) => {
   const db = drizzle(c.env.DB);
@@ -148,19 +156,11 @@ app.post("/award", zValidator("json", AwardPointsSchema), async (c) => {
   return success(c, { ...entry, user: targetUser }, 201);
 });
 
-app.get("/", async (c) => {
+app.get("/", zValidator("query", PointsSiteQuerySchema), async (c) => {
   const db = drizzle(c.env.DB);
   const { user } = c.get("auth");
 
-  const siteId = c.req.query("siteId");
-  if (!siteId) {
-    return error(
-      c,
-      "MISSING_SITE_ID",
-      "siteId query parameter is required",
-      400,
-    );
-  }
+  const { siteId } = c.req.valid("query");
 
   await attendanceMiddleware(c, async () => {}, siteId);
 
@@ -202,19 +202,11 @@ app.get("/", async (c) => {
 
   return success(c, { balance: balanceResult?.total ?? 0, history });
 });
-app.get("/balance", async (c) => {
+app.get("/balance", zValidator("query", PointsSiteQuerySchema), async (c) => {
   const db = drizzle(c.env.DB);
   const { user } = c.get("auth");
 
-  const siteId = c.req.query("siteId");
-  if (!siteId) {
-    return error(
-      c,
-      "MISSING_SITE_ID",
-      "siteId query parameter is required",
-      400,
-    );
-  }
+  const { siteId } = c.req.valid("query");
 
   await attendanceMiddleware(c, async () => {}, siteId);
 
@@ -392,29 +384,53 @@ app.get("/history", async (c) => {
   return success(c, { entries, total: countResult?.count ?? 0, limit, offset });
 });
 
-app.get("/leaderboard/:siteId", async (c) => {
-  const db = drizzle(c.env.DB);
-  const { user } = c.get("auth");
-  const siteId = c.req.param("siteId");
+app.get(
+  "/leaderboard/:siteId",
+  zValidator("query", PointsLeaderboardQuerySchema),
+  async (c) => {
+    const db = drizzle(c.env.DB);
+    const { user } = c.get("auth");
+    const siteId = c.req.param("siteId");
 
-  await attendanceMiddleware(c, async () => {}, siteId);
+    const { limit, type } = c.req.valid("query");
 
-  const limitParam = c.req.query("limit");
-  const limit = Math.min(parseInt(limitParam || "10") || 10, 50);
-  const type = c.req.query("type");
+    await attendanceMiddleware(c, async () => {}, siteId);
 
-  const site = await db
-    .select({ leaderboardEnabled: sites.leaderboardEnabled })
-    .from(sites)
-    .where(eq(sites.id, siteId))
-    .get();
+    const site = await db
+      .select({ leaderboardEnabled: sites.leaderboardEnabled })
+      .from(sites)
+      .where(eq(sites.id, siteId))
+      .get();
 
-  if (!site) {
-    return error(c, "SITE_NOT_FOUND", "Site not found", 404);
-  }
+    if (!site) {
+      return error(c, "SITE_NOT_FOUND", "Site not found", 404);
+    }
 
-  if (!site.leaderboardEnabled && user.role !== "SUPER_ADMIN") {
-    const adminMembership = await db
+    if (!site.leaderboardEnabled && user.role !== "SUPER_ADMIN") {
+      const adminMembership = await db
+        .select()
+        .from(siteMemberships)
+        .where(
+          and(
+            eq(siteMemberships.userId, user.id),
+            eq(siteMemberships.siteId, siteId),
+            eq(siteMemberships.status, "ACTIVE"),
+            eq(siteMemberships.role, "SITE_ADMIN"),
+          ),
+        )
+        .get();
+
+      if (!adminMembership) {
+        return error(
+          c,
+          "LEADERBOARD_DISABLED",
+          "Leaderboard is disabled for this site",
+          403,
+        );
+      }
+    }
+
+    const membership = await db
       .select()
       .from(siteMemberships)
       .where(
@@ -422,117 +438,95 @@ app.get("/leaderboard/:siteId", async (c) => {
           eq(siteMemberships.userId, user.id),
           eq(siteMemberships.siteId, siteId),
           eq(siteMemberships.status, "ACTIVE"),
-          eq(siteMemberships.role, "SITE_ADMIN"),
         ),
       )
       .get();
 
-    if (!adminMembership) {
-      return error(
-        c,
-        "LEADERBOARD_DISABLED",
-        "Leaderboard is disabled for this site",
-        403,
-      );
+    if (!membership) {
+      return error(c, "NOT_SITE_MEMBER", "Not a member of this site", 403);
     }
-  }
 
-  const membership = await db
-    .select()
-    .from(siteMemberships)
-    .where(
-      and(
-        eq(siteMemberships.userId, user.id),
-        eq(siteMemberships.siteId, siteId),
-        eq(siteMemberships.status, "ACTIVE"),
-      ),
-    )
-    .get();
+    const conditions = [eq(pointsLedger.siteId, siteId)];
+    if (type === "monthly") {
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      conditions.push(eq(pointsLedger.settleMonth, currentMonth));
+    }
 
-  if (!membership) {
-    return error(c, "NOT_SITE_MEMBER", "Not a member of this site", 403);
-  }
-
-  const conditions = [eq(pointsLedger.siteId, siteId)];
-  if (type === "monthly") {
-    const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    conditions.push(eq(pointsLedger.settleMonth, currentMonth));
-  }
-
-  const results = await db
-    .select({
-      userId: pointsLedger.userId,
-      total: sql<number>`SUM(${pointsLedger.amount})`.as("total"),
-    })
-    .from(pointsLedger)
-    .where(and(...conditions))
-    .groupBy(pointsLedger.userId)
-    .orderBy(desc(sql`total`))
-    .limit(limit)
-    .all();
-
-  const userIds = results.map((r) => r.userId);
-  const usersData =
-    userIds.length > 0
-      ? await db
-          .select({ id: users.id, nameMasked: users.nameMasked })
-          .from(users)
-          .where(inArray(users.id, userIds))
-          .all()
-      : [];
-
-  const userMap = new Map(usersData.map((u) => [u.id, u]));
-
-  const leaderboard = results.map((r, index) => {
-    const userData = userMap.get(r.userId);
-    return {
-      rank: index + 1,
-      userId: r.userId,
-      nameMasked: userData?.nameMasked ?? null,
-      totalPoints: r.total ?? 0,
-      isCurrentUser: r.userId === user.id,
-    };
-  });
-
-  let myRank: number | null = null;
-  const myEntry = leaderboard.find((e) => e.isCurrentUser);
-  if (myEntry) {
-    myRank = myEntry.rank;
-  } else {
-    const myTotal = await db
+    const results = await db
       .select({
-        total: sql<number>`COALESCE(SUM(${pointsLedger.amount}), 0)`,
+        userId: pointsLedger.userId,
+        total: sql<number>`SUM(${pointsLedger.amount})`.as("total"),
       })
       .from(pointsLedger)
-      .where(and(eq(pointsLedger.userId, user.id), ...conditions))
-      .get();
+      .where(and(...conditions))
+      .groupBy(pointsLedger.userId)
+      .orderBy(desc(sql`total`))
+      .limit(limit)
+      .all();
 
-    if (myTotal && myTotal.total > 0) {
-      const countAbove = await db
+    const userIds = results.map((r) => r.userId);
+    const usersData =
+      userIds.length > 0
+        ? await db
+            .select({ id: users.id, nameMasked: users.nameMasked })
+            .from(users)
+            .where(inArray(users.id, userIds))
+            .all()
+        : [];
+
+    const userMap = new Map(usersData.map((u) => [u.id, u]));
+
+    const leaderboard = results.map((r, index) => {
+      const userData = userMap.get(r.userId);
+      return {
+        rank: index + 1,
+        userId: r.userId,
+        nameMasked: userData?.nameMasked ?? null,
+        totalPoints: r.total ?? 0,
+        isCurrentUser: r.userId === user.id,
+      };
+    });
+
+    let myRank: number | null = null;
+    const myEntry = leaderboard.find((e) => e.isCurrentUser);
+    if (myEntry) {
+      myRank = myEntry.rank;
+    } else {
+      const myTotal = await db
         .select({
-          count: sql<number>`COUNT(*)`,
+          total: sql<number>`COALESCE(SUM(${pointsLedger.amount}), 0)`,
         })
-        .from(
-          db
-            .select({
-              userId: pointsLedger.userId,
-              total: sql<number>`SUM(${pointsLedger.amount})`.as("total"),
-            })
-            .from(pointsLedger)
-            .where(and(...conditions))
-            .groupBy(pointsLedger.userId)
-            .having(sql`SUM(${pointsLedger.amount}) > ${myTotal.total}`)
-            .as("above"),
-        )
+        .from(pointsLedger)
+        .where(and(eq(pointsLedger.userId, user.id), ...conditions))
         .get();
 
-      myRank = (countAbove?.count ?? 0) + 1;
-    }
-  }
+      if (myTotal && myTotal.total > 0) {
+        const countAbove = await db
+          .select({
+            count: sql<number>`COUNT(*)`,
+          })
+          .from(
+            db
+              .select({
+                userId: pointsLedger.userId,
+                total: sql<number>`SUM(${pointsLedger.amount})`.as("total"),
+              })
+              .from(pointsLedger)
+              .where(and(...conditions))
+              .groupBy(pointsLedger.userId)
+              .having(sql`SUM(${pointsLedger.amount}) > ${myTotal.total}`)
+              .as("above"),
+          )
+          .get();
 
-  return success(c, { leaderboard, myRank });
-});
+        myRank = (countAbove?.count ?? 0) + 1;
+      }
+    }
+
+    return success(c, { leaderboard, myRank });
+  },
+);
 
 // GET /ranking/:siteId - Alias for /leaderboard/:siteId
 app.get("/ranking/:siteId", (c) => {

@@ -109,7 +109,7 @@ export function PostContentCard({
           <MessageSquare className="h-4 w-4" />
           내용
         </h3>
-        <p className="whitespace-pre-wrap text-muted-foreground">
+        <p className="whitespace-pre-wrap break-words text-muted-foreground">
           {post.content}
         </p>
       </div>

@@ -208,7 +208,9 @@ export function ActionDetailContent() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="whitespace-pre-wrap">{action.description}</p>
+            <p className="whitespace-pre-wrap break-words">
+              {action.description}
+            </p>
 
             <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
@@ -234,7 +236,9 @@ export function ActionDetailContent() {
                 <span className="font-medium text-gray-700">
                   {t("actions.view.relatedReport")}:
                 </span>{" "}
-                <span className="text-gray-600">{action.post.title}</span>
+                <span className="text-gray-600 break-words">
+                  {action.post.title}
+                </span>
               </div>
             )}
           </CardContent>

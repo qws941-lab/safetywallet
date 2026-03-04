@@ -5,6 +5,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
+import { rateLimitMiddleware } from "../middleware/rate-limit";
 import { logAuditWithContext } from "../lib/audit";
 import { success, error } from "../lib/response";
 import {
@@ -27,6 +28,9 @@ const disputesRoute = new Hono<{
 }>();
 
 disputesRoute.use("*", authMiddleware);
+
+const defaultRateLimit = rateLimitMiddleware();
+disputesRoute.use("*", defaultRateLimit);
 
 disputesRoute.post(
   "/",

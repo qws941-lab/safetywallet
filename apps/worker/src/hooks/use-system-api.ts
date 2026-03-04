@@ -27,6 +27,7 @@ export function useSystemStatus() {
     queryKey: ["system-status"],
     queryFn: () =>
       apiFetch<SystemStatusResponse>("/system/status", { skipAuth: true }),
+    // Short staleTime for real-time system status checks
     staleTime: 1000 * 30,
     refetchInterval: 1000 * 60,
   });
@@ -47,6 +48,7 @@ export function useSiteInfo(siteId: string | null) {
         }>
       >(`/sites/${siteId}`),
     enabled: !!siteId,
+    // Longer staleTime for site info (rarely changes, optimize for reduced refetches)
     staleTime: 1000 * 60 * 10,
   });
 }

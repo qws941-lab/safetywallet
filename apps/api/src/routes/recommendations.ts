@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { eq, and, desc } from "drizzle-orm";
 import { recommendations, siteMemberships } from "../db/schema";
 import { authMiddleware } from "../middleware/auth";
+import { rateLimitMiddleware } from "../middleware/rate-limit";
 import { attendanceMiddleware } from "../middleware/attendance";
 import { success, error } from "../lib/response";
 import type { Env, AuthContext } from "../types";
@@ -13,6 +14,9 @@ const recommendationsRoute = new Hono<{
   Bindings: Env;
   Variables: { auth: AuthContext };
 }>();
+
+const defaultRateLimit = rateLimitMiddleware();
+recommendationsRoute.use("*", defaultRateLimit);
 
 const CreateRecommendationSchema = z.object({
   siteId: z.string(),

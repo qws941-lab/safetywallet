@@ -5,9 +5,14 @@ import { drizzle } from "drizzle-orm/d1";
 import { eq, and, sql } from "drizzle-orm";
 import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
+import { rateLimitMiddleware } from "../middleware/rate-limit";
 import { sites, siteMemberships, users, auditLogs } from "../db/schema";
 import { success, error } from "../lib/response";
 import { CreateSiteSchema, UpdateSiteSchema } from "../validators/schemas";
+import {
+  SitesListQuerySchema,
+  SiteMembersQuerySchema,
+} from "../validators/query";
 
 const app = new Hono<{
   Bindings: Env;
@@ -16,11 +21,13 @@ const app = new Hono<{
 
 app.use("*", authMiddleware);
 
-app.get("/", async (c) => {
+const defaultRateLimit = rateLimitMiddleware();
+app.use("*", defaultRateLimit);
+
+app.get("/", zValidator("query", SitesListQuerySchema), async (c) => {
   const db = drizzle(c.env.DB);
   const { user } = c.get("auth");
-  const limit = Math.min(parseInt(c.req.query("limit") || "20", 10) || 20, 100);
-  const offset = parseInt(c.req.query("offset") || "0", 10) || 0;
+  const { limit, offset } = c.req.valid("query");
 
   if (user.role === "ADMIN" || user.role === "SUPER_ADMIN") {
     const allSites = await db
@@ -110,60 +117,63 @@ app.get("/:id", async (c) => {
   });
 });
 
-app.get("/:id/members", async (c) => {
-  const db = drizzle(c.env.DB);
-  const { user } = c.get("auth");
-  const siteId = c.req.param("id");
-  const limit = Math.min(parseInt(c.req.query("limit") || "20", 10) || 20, 100);
-  const offset = parseInt(c.req.query("offset") || "0", 10) || 0;
+app.get(
+  "/:id/members",
+  zValidator("query", SiteMembersQuerySchema),
+  async (c) => {
+    const db = drizzle(c.env.DB);
+    const { user } = c.get("auth");
+    const siteId = c.req.param("id");
+    const { limit, offset } = c.req.valid("query");
 
-  const membership = await db
-    .select()
-    .from(siteMemberships)
-    .where(
-      and(
-        eq(siteMemberships.userId, user.id),
-        eq(siteMemberships.siteId, siteId),
-        eq(siteMemberships.status, "ACTIVE"),
-      ),
-    )
-    .get();
+    const membership = await db
+      .select()
+      .from(siteMemberships)
+      .where(
+        and(
+          eq(siteMemberships.userId, user.id),
+          eq(siteMemberships.siteId, siteId),
+          eq(siteMemberships.status, "ACTIVE"),
+        ),
+      )
+      .get();
 
-  if (!membership && user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
-    return error(c, "NOT_AUTHORIZED", "Not authorized", 403);
-  }
+    if (!membership && user.role !== "ADMIN" && user.role !== "SUPER_ADMIN") {
+      return error(c, "NOT_AUTHORIZED", "Not authorized", 403);
+    }
 
-  if (
-    membership?.role === "WORKER" &&
-    user.role !== "ADMIN" &&
-    user.role !== "SUPER_ADMIN"
-  ) {
-    return error(c, "NOT_AUTHORIZED", "Not authorized to view members", 403);
-  }
+    if (
+      membership?.role === "WORKER" &&
+      user.role !== "ADMIN" &&
+      user.role !== "SUPER_ADMIN"
+    ) {
+      return error(c, "NOT_AUTHORIZED", "Not authorized to view members", 403);
+    }
 
-  const members = await db
-    .select({
-      id: siteMemberships.id,
-      role: siteMemberships.role,
-      status: siteMemberships.status,
-      joinedAt: siteMemberships.joinedAt,
-      user: {
-        id: users.id,
-        name: users.nameMasked,
-      },
-    })
-    .from(siteMemberships)
-    .innerJoin(users, eq(siteMemberships.userId, users.id))
-    .where(eq(siteMemberships.siteId, siteId))
-    .limit(limit)
-    .offset(offset)
-    .all();
+    const members = await db
+      .select({
+        id: siteMemberships.id,
+        role: siteMemberships.role,
+        status: siteMemberships.status,
+        joinedAt: siteMemberships.joinedAt,
+        user: {
+          id: users.id,
+          name: users.nameMasked,
+        },
+      })
+      .from(siteMemberships)
+      .innerJoin(users, eq(siteMemberships.userId, users.id))
+      .where(eq(siteMemberships.siteId, siteId))
+      .limit(limit)
+      .offset(offset)
+      .all();
 
-  return success(c, {
-    data: members,
-    pagination: { limit, offset, count: members.length },
-  });
-});
+    return success(c, {
+      data: members,
+      pagination: { limit, offset, count: members.length },
+    });
+  },
+);
 
 app.get("/:id/members/:memberId", async (c) => {
   const db = drizzle(c.env.DB);

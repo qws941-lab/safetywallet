@@ -42,7 +42,9 @@ export function QuizList({
       key: "title",
       header: "제목",
       sortable: true,
-      render: (item) => <span className="font-medium">{item.title}</span>,
+      render: (item) => (
+        <span className="font-medium break-words">{item.title}</span>
+      ),
     },
     {
       key: "status",

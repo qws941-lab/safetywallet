@@ -59,6 +59,7 @@ export function ImageLightbox({
                 size="icon"
                 className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:bg-black/50 hover:text-white rounded-full h-12 w-12 opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={handlePrevious}
+                aria-label="이전 이미지"
               >
                 <ChevronLeft size={32} />
               </Button>
@@ -67,6 +68,7 @@ export function ImageLightbox({
                 size="icon"
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-black/50 hover:text-white rounded-full h-12 w-12 opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={handleNext}
+                aria-label="다음 이미지"
               >
                 <ChevronRight size={32} />
               </Button>
@@ -78,6 +80,7 @@ export function ImageLightbox({
               href={currentImage}
               download={`image-${currentIndex + 1}`}
               className="inline-flex items-center justify-center rounded-full text-white hover:bg-black/50 hover:text-white h-10 w-10 transition-colors"
+              aria-label="이미지 다운로드"
             >
               <Download size={20} />
             </a>

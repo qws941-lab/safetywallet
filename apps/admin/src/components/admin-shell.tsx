@@ -32,7 +32,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <MobileHeader />
-        <main className="flex-1 overflow-auto bg-slate-50 p-4 md:p-6">
+        <main
+          id="main-content"
+          className="flex-1 overflow-auto bg-slate-50 p-4 md:p-6"
+        >
           {children}
         </main>
       </div>

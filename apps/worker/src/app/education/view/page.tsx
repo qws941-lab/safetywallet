@@ -218,7 +218,7 @@ function EducationDetailContent() {
           )}
         </div>
 
-        <h1 className="text-xl font-bold">{data.title}</h1>
+        <h1 className="text-xl font-bold break-words">{data.title}</h1>
 
         <div className="flex items-center gap-1 text-xs text-muted-foreground mb-4">
           <Calendar className="w-3.5 h-3.5" />
@@ -274,7 +274,7 @@ function EducationDetailContent() {
 
         {data.description && (
           <Card>
-            <CardContent className="p-4 bg-gray-50 text-sm text-gray-600">
+            <CardContent className="p-4 bg-gray-50 text-sm text-gray-600 break-words">
               {data.description}
             </CardContent>
           </Card>
@@ -287,7 +287,7 @@ function EducationDetailContent() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+            <div className="prose prose-sm max-w-none whitespace-pre-wrap break-words">
               {data.content}
             </div>
           </CardContent>

@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { eq, and, desc, gte, lt } from "drizzle-orm";
 import * as schema from "../db/schema";
 import { authMiddleware } from "../middleware/auth";
+import { rateLimitMiddleware } from "../middleware/rate-limit";
 import { success, error } from "../lib/response";
 import type { Env, AuthContext } from "../types";
 import { logAuditWithContext } from "../lib/audit";
@@ -17,6 +18,9 @@ const app = new Hono<{
 }>();
 
 app.use("*", authMiddleware);
+
+const defaultRateLimit = rateLimitMiddleware();
+app.use("*", defaultRateLimit);
 
 const APPROVAL_STATUSES = new Set(schema.approvalStatusEnum);
 

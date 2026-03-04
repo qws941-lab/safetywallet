@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { authMiddleware } from "../../middleware/auth";
+import { rateLimitMiddleware } from "../../middleware/rate-limit";
 import { success, error } from "../../lib/response";
 import type { AppType } from "./helpers";
 import contentsRoute from "./contents";
@@ -12,6 +13,9 @@ import completionsRoute from "./completions";
 const app = new Hono<AppType>();
 
 app.use("*", authMiddleware);
+
+const defaultRateLimit = rateLimitMiddleware();
+app.use("*", defaultRateLimit);
 
 app.get("/youtube-oembed", async (c) => {
   const url = c.req.query("url");

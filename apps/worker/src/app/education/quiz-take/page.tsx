@@ -267,7 +267,7 @@ function QuizTakeContent() {
 
       <main className="p-4 space-y-6">
         <div className="space-y-2">
-          <h1 className="text-xl font-bold">{quiz.title}</h1>
+          <h1 className="text-xl font-bold break-words">{quiz.title}</h1>
           <div className="flex gap-2 text-xs text-muted-foreground">
             <Badge variant="outline" className="gap-1">
               <CheckCircle2 className="w-3 h-3" />
@@ -288,7 +288,9 @@ function QuizTakeContent() {
             )}
           </div>
           {quiz.description && (
-            <p className="text-sm text-gray-600">{quiz.description}</p>
+            <p className="text-sm text-gray-600 break-words">
+              {quiz.description}
+            </p>
           )}
         </div>
 

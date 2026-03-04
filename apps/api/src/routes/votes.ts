@@ -10,7 +10,9 @@ import {
   siteMemberships,
 } from "../db/schema";
 import { CastVoteSchema } from "../validators/schemas";
+import { VoteResultsQuerySchema } from "../validators/query";
 import { authMiddleware } from "../middleware/auth";
+import { rateLimitMiddleware } from "../middleware/rate-limit";
 import { attendanceMiddleware } from "../middleware/attendance";
 import { logAuditWithContext } from "../lib/audit";
 import { success, error } from "../lib/response";
@@ -25,6 +27,9 @@ const votesRoute = new Hono<{
   Bindings: Env;
   Variables: { auth: AuthContext };
 }>();
+
+const defaultRateLimit = rateLimitMiddleware();
+votesRoute.use("*", defaultRateLimit);
 
 function getCurrentMonth(): string {
   const now = new Date();
@@ -288,34 +293,39 @@ votesRoute.post(
   },
 );
 
-votesRoute.get("/results/:siteId", authMiddleware, async (c) => {
-  const db = drizzle(c.env.DB);
-  const siteId = c.req.param("siteId");
-  const month = c.req.query("month") || getCurrentMonth();
+votesRoute.get(
+  "/results/:siteId",
+  zValidator("query", VoteResultsQuerySchema),
+  async (c) => {
+    const db = drizzle(c.env.DB);
+    const siteId = c.req.param("siteId");
+    const { month: queryMonth } = c.req.valid("query");
+    const month = queryMonth || getCurrentMonth();
 
-  const results = await db
-    .select({
-      candidateId: voteCandidates.userId,
-      name: users.nameMasked,
-      count: sql<number>`COUNT(${votes.id})`.as("count"),
-    })
-    .from(voteCandidates)
-    .innerJoin(users, eq(voteCandidates.userId, users.id))
-    .leftJoin(
-      votes,
-      and(
-        eq(votes.candidateId, voteCandidates.userId),
-        eq(votes.siteId, voteCandidates.siteId),
-        eq(votes.month, voteCandidates.month),
-      ),
-    )
-    .where(
-      and(eq(voteCandidates.siteId, siteId), eq(voteCandidates.month, month)),
-    )
-    .groupBy(voteCandidates.userId, users.nameMasked)
-    .orderBy(sql`count DESC`);
+    const results = await db
+      .select({
+        candidateId: voteCandidates.userId,
+        name: users.nameMasked,
+        count: sql<number>`COUNT(${votes.id})`.as("count"),
+      })
+      .from(voteCandidates)
+      .innerJoin(users, eq(voteCandidates.userId, users.id))
+      .leftJoin(
+        votes,
+        and(
+          eq(votes.candidateId, voteCandidates.userId),
+          eq(votes.siteId, voteCandidates.siteId),
+          eq(votes.month, voteCandidates.month),
+        ),
+      )
+      .where(
+        and(eq(voteCandidates.siteId, siteId), eq(voteCandidates.month, month)),
+      )
+      .groupBy(voteCandidates.userId, users.nameMasked)
+      .orderBy(sql`count DESC`);
 
-  return success(c, { month, results });
-});
+    return success(c, { month, results });
+  },
+);
 
 export default votesRoute;

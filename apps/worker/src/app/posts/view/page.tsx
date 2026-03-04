@@ -209,7 +209,7 @@ function PostDetailContent() {
                   </span>
                 </div>
                 {latestReview.comment && (
-                  <div className="text-sm text-red-700 bg-white/50 p-2 rounded">
+                  <div className="text-sm text-red-700 bg-white/50 p-2 rounded break-words">
                     {latestReview.comment}
                   </div>
                 )}
@@ -229,7 +229,7 @@ function PostDetailContent() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-sm text-yellow-800 bg-white/50 p-2 rounded">
+              <div className="text-sm text-yellow-800 bg-white/50 p-2 rounded break-words">
                 {latestReview.comment || t("posts.view.adminRequestedInfo")}
               </div>
             </CardContent>
@@ -317,7 +317,7 @@ function PostDetailContent() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="whitespace-pre-wrap">{post.content}</p>
+            <p className="whitespace-pre-wrap break-words">{post.content}</p>
           </CardContent>
         </Card>
 

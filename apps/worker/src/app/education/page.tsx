@@ -201,7 +201,7 @@ function QuizzesTab({ siteId }: { siteId: string }) {
                     : t("education.unlimited")}
                 </span>
               </div>
-              <h3 className="font-bold mb-2">{quiz.title}</h3>
+              <h3 className="font-bold mb-2 break-words">{quiz.title}</h3>
               <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
                 {quiz.description || t("education.noDescription")}
               </p>

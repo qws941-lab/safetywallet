@@ -42,7 +42,7 @@ export function SystemBanner() {
             className={`flex items-start gap-2 px-4 py-2.5 border-b text-sm ${style.container}`}
           >
             <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${style.iconClass}`} />
-            <p className="leading-snug">{notice.message}</p>
+            <p className="leading-snug break-words">{notice.message}</p>
           </div>
         );
       })}

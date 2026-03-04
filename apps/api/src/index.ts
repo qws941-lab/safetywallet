@@ -59,11 +59,14 @@ app.use("*", async (c, next) => {
   const corsMiddleware = cors({
     origin: (origin) => {
       if (allowedOrigins.includes(origin)) return origin;
-      if (
-        origin.startsWith("http://localhost:") ||
-        origin.startsWith("http://127.0.0.1:")
-      ) {
-        return origin;
+      // Only allow localhost in non-production environments
+      if (c.env.ENVIRONMENT !== "production") {
+        if (
+          origin.startsWith("http://localhost:") ||
+          origin.startsWith("http://127.0.0.1:")
+        ) {
+          return origin;
+        }
       }
       return null;
     },

@@ -5,6 +5,7 @@ import { drizzle, type DrizzleD1Database } from "drizzle-orm/d1";
 import { eq, and, inArray } from "drizzle-orm";
 import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
+import { rateLimitMiddleware } from "../middleware/rate-limit";
 import { pushSubscriptions, users } from "../db/schema";
 import { success, error } from "../lib/response";
 import {
@@ -40,6 +41,9 @@ const app = new Hono<{
 }>();
 
 app.use("*", authMiddleware);
+
+const defaultRateLimit = rateLimitMiddleware();
+app.use("*", defaultRateLimit);
 
 const SubscribeSchema = z.object({
   endpoint: z.string().url(),

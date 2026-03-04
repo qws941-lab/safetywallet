@@ -131,9 +131,24 @@ export async function emergencyPurgePostHandler(c: AppContext) {
   }
 
   const [images, reviewsList, points] = await Promise.all([
-    db.select().from(postImages).where(eq(postImages.postId, postId)).all(),
-    db.select().from(reviews).where(eq(reviews.postId, postId)).all(),
-    db.select().from(pointsLedger).where(eq(pointsLedger.postId, postId)).all(),
+    db
+      .select()
+      .from(postImages)
+      .where(eq(postImages.postId, postId))
+      .limit(1000)
+      .all(),
+    db
+      .select()
+      .from(reviews)
+      .where(eq(reviews.postId, postId))
+      .limit(1000)
+      .all(),
+    db
+      .select()
+      .from(pointsLedger)
+      .where(eq(pointsLedger.postId, postId))
+      .limit(1000)
+      .all(),
   ]);
 
   for (const image of images) {

@@ -245,7 +245,9 @@ export default function RecommendationsPage() {
                         {rec.recommendationDate}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-600 mt-1">{rec.reason}</p>
+                    <p className="text-xs text-gray-600 mt-1 break-words">
+                      {rec.reason}
+                    </p>
                   </CardContent>
                 </Card>
               ))

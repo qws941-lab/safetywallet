@@ -1,11 +1,12 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { drizzle } from "drizzle-orm/d1";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import type { AuthContext, Env } from "../types";
 import { users } from "../db/schema";
 import { hmac, encrypt } from "../lib/crypto";
 import { logAuditWithContext } from "../lib/audit";
+import { dbBatchChunked } from "../db/helpers";
 import { success, error } from "../lib/response";
 import { authMiddleware } from "../middleware/auth";
 import { maskName } from "../utils/common";
@@ -71,84 +72,134 @@ app.post(
       errors: [] as { externalWorkerId: string; error: string }[],
     };
 
+    // Phase 1: Validate workers
+    const validWorkers: Array<{
+      externalWorkerId: string;
+      name: string;
+      phone: string;
+      dob: string;
+      companyName: string | null;
+      tradeType: string | null;
+    }> = [];
+
     for (const worker of data.workers) {
-      try {
-        if (
-          !worker.externalWorkerId ||
-          !worker.name ||
-          !worker.phone ||
-          !worker.dob
-        ) {
-          results.failed++;
-          results.errors.push({
-            externalWorkerId: worker.externalWorkerId || "unknown",
-            error:
-              "Missing required fields: externalWorkerId, name, phone, dob",
-          });
-          continue;
-        }
-
-        const externalWorkerId = worker.externalWorkerId;
-        const workerName = worker.name;
-        const workerPhone = worker.phone;
-        const workerDob = worker.dob;
-
-        const normalizedPhone = workerPhone.replace(/[^0-9]/g, "");
-        const phoneHash = await hmac(c.env.HMAC_SECRET, normalizedPhone);
-        const dobHash = await hmac(c.env.HMAC_SECRET, workerDob);
-        const phoneEncrypted = await encrypt(
-          c.env.ENCRYPTION_KEY,
-          normalizedPhone,
-        );
-        const dobEncrypted = await encrypt(c.env.ENCRYPTION_KEY, workerDob);
-        const nameMasked = maskName(workerName);
-
-        const existing = await db
-          .select()
-          .from(users)
-          .where(eq(users.externalWorkerId, externalWorkerId))
-          .get();
-
-        if (existing) {
-          await db
-            .update(users)
-            .set({
-              name: workerName,
-              nameMasked,
-              phoneHash,
-              phoneEncrypted,
-              dobHash,
-              dobEncrypted,
-              companyName: worker.companyName ?? null,
-              tradeType: worker.tradeType ?? null,
-              updatedAt: new Date(),
-            })
-            .where(eq(users.id, existing.id));
-
-          results.updated++;
-        } else {
-          await db.insert(users).values({
-            externalSystem: "FAS",
-            externalWorkerId,
-            name: workerName,
-            nameMasked,
-            phoneHash,
-            phoneEncrypted,
-            dobHash,
-            dobEncrypted,
-            companyName: worker.companyName ?? null,
-            tradeType: worker.tradeType ?? null,
-            role: "WORKER",
-          });
-
-          results.created++;
-        }
-      } catch (error) {
+      if (
+        !worker.externalWorkerId ||
+        !worker.name ||
+        !worker.phone ||
+        !worker.dob
+      ) {
         results.failed++;
         results.errors.push({
           externalWorkerId: worker.externalWorkerId || "unknown",
-          error: error instanceof Error ? error.message : "Unknown error",
+          error: "Missing required fields: externalWorkerId, name, phone, dob",
         });
+        continue;
+      }
+      validWorkers.push({
+        externalWorkerId: worker.externalWorkerId,
+        name: worker.name,
+        phone: worker.phone,
+        dob: worker.dob,
+        companyName: worker.companyName ?? null,
+        tradeType: worker.tradeType ?? null,
+      });
+    }
+
+    if (validWorkers.length > 0) {
+      // Phase 2: Compute crypto in parallel
+      const prepared = await Promise.all(
+        validWorkers.map(async (w) => {
+          const normalizedPhone = w.phone.replace(/[^0-9]/g, "");
+          const [phoneHash, dobHash, phoneEncrypted, dobEncrypted] =
+            await Promise.all([
+              hmac(c.env.HMAC_SECRET, normalizedPhone),
+              hmac(c.env.HMAC_SECRET, w.dob),
+              encrypt(c.env.ENCRYPTION_KEY, normalizedPhone),
+              encrypt(c.env.ENCRYPTION_KEY, w.dob),
+            ]);
+          return {
+            ...w,
+            phoneHash,
+            dobHash,
+            phoneEncrypted,
+            dobEncrypted,
+            nameMasked: maskName(w.name),
+          };
+        }),
+      );
+
+      // Phase 3: Batch-fetch existing users (chunked for SQLite variable limit)
+      const LOOKUP_CHUNK = 500;
+      const existingMap = new Map<string, string>();
+      for (let i = 0; i < prepared.length; i += LOOKUP_CHUNK) {
+        const chunk = prepared.slice(i, i + LOOKUP_CHUNK);
+        const ids = chunk.map((w) => w.externalWorkerId);
+        const existing = await db
+          .select({
+            id: users.id,
+            externalWorkerId: users.externalWorkerId,
+          })
+          .from(users)
+          .where(inArray(users.externalWorkerId, ids))
+          .all();
+        for (const u of existing) {
+          if (u.externalWorkerId) existingMap.set(u.externalWorkerId, u.id);
+        }
+      }
+
+      // Phase 4: Build batch operations
+      const operations: Promise<unknown>[] = [];
+      for (const w of prepared) {
+        const existingId = existingMap.get(w.externalWorkerId);
+        if (existingId) {
+          operations.push(
+            db
+              .update(users)
+              .set({
+                name: w.name,
+                nameMasked: w.nameMasked,
+                phoneHash: w.phoneHash,
+                phoneEncrypted: w.phoneEncrypted,
+                dobHash: w.dobHash,
+                dobEncrypted: w.dobEncrypted,
+                companyName: w.companyName,
+                tradeType: w.tradeType,
+                updatedAt: new Date(),
+              })
+              .where(eq(users.id, existingId)),
+          );
+          results.updated++;
+        } else {
+          operations.push(
+            db.insert(users).values({
+              externalSystem: "FAS",
+              externalWorkerId: w.externalWorkerId,
+              name: w.name,
+              nameMasked: w.nameMasked,
+              phoneHash: w.phoneHash,
+              phoneEncrypted: w.phoneEncrypted,
+              dobHash: w.dobHash,
+              dobEncrypted: w.dobEncrypted,
+              companyName: w.companyName,
+              tradeType: w.tradeType,
+              role: "WORKER",
+            }),
+          );
+          results.created++;
+        }
+      }
+
+      // Phase 5: Execute batched writes
+      const batchResult = await dbBatchChunked(db, operations);
+      if (batchResult.failedChunks > 0) {
+        results.failed += batchResult.failedChunks;
+        for (const err of batchResult.errors) {
+          results.errors.push({
+            externalWorkerId: "batch",
+            error: `Chunk ${err.chunkIndex} failed: ${err.error}`,
+          });
+        }
       }
     }
 
@@ -241,7 +292,8 @@ app.get("/employees", authMiddleware, async (c) => {
     })
     .from(users)
     .where(eq(users.externalSystem, "FAS"))
-    .orderBy(desc(users.updatedAt));
+    .orderBy(desc(users.updatedAt))
+    .limit(1000);
 
   return success(c, { employees });
 });

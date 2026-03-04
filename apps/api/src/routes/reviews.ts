@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { eq, and, desc } from "drizzle-orm";
 import type { Env, AuthContext } from "../types";
 import { authMiddleware } from "../middleware/auth";
+import { rateLimitMiddleware } from "../middleware/rate-limit";
 import { success, error } from "../lib/response";
 import { logAuditWithContext } from "../lib/audit";
 
@@ -115,6 +116,9 @@ function determineNewStatuses(
 }
 
 app.use("*", authMiddleware);
+
+const defaultRateLimit = rateLimitMiddleware();
+app.use("*", defaultRateLimit);
 
 app.post("/", validateJson("json", ReviewActionSchema), async (c) => {
   const db = drizzle(c.env.DB);

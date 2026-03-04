@@ -252,6 +252,7 @@ export function DataTable<T extends object>({
               size="icon"
               onClick={() => setPage(page - 1)}
               disabled={page === 0}
+              aria-label="이전 페이지"
             >
               <ChevronLeft size={16} />
             </Button>
@@ -260,6 +261,7 @@ export function DataTable<T extends object>({
               size="icon"
               onClick={() => setPage(page + 1)}
               disabled={page >= totalPages - 1}
+              aria-label="다음 페이지"
             >
               <ChevronRight size={16} />
             </Button>

@@ -120,6 +120,7 @@ export default function VoteDetailPage() {
             variant="ghost"
             size="icon"
             onClick={() => router.push("/votes")}
+            aria-label="뒤로 가기"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -223,6 +224,7 @@ export default function VoteDetailPage() {
                                 onClick={() =>
                                   setDeletingId(result.candidateId)
                                 }
+                                aria-label="삭제"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>

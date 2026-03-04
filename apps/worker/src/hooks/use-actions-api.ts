@@ -27,7 +27,6 @@ export function useMyActions(params?: {
       apiFetch<ApiResponse<{ data: ActionDto[] }>>(
         `/actions/my${qs ? `?${qs}` : ""}`,
       ).then((r) => r.data),
-    staleTime: 1000 * 60 * 2,
   });
 }
 

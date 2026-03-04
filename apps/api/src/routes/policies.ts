@@ -7,6 +7,7 @@ import { HTTPException } from "hono/http-exception";
 import { pointPolicies, siteMemberships, auditLogs } from "../db/schema";
 import { success, error } from "../lib/response";
 import { authMiddleware } from "../middleware/auth";
+import { rateLimitMiddleware } from "../middleware/rate-limit";
 import { logAuditWithContext } from "../lib/audit";
 import type { Env, AuthContext } from "../types";
 import { CreatePolicySchema, UpdatePolicySchema } from "../validators/schemas";
@@ -40,6 +41,9 @@ async function requireSiteAdmin(
     throw new HTTPException(403, { message: "Site admin access required" });
   }
 }
+
+const defaultRateLimit = rateLimitMiddleware();
+policies.use("*", defaultRateLimit);
 
 policies.get("/site/:siteId", authMiddleware, async (c) => {
   const authContext = c.get("auth");

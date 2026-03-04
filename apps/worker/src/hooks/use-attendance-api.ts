@@ -24,6 +24,7 @@ export function useAttendanceToday(siteId: string | null) {
       };
     },
     enabled: !!siteId,
+    // Longer staleTime + refetchInterval for attendance polling (real-time check-in status)
     staleTime: 1000 * 60 * 5,
     refetchInterval: 1000 * 60 * 5,
   });

@@ -14,6 +14,8 @@ import {
   siteMemberships,
   users,
   reviews,
+  pointPolicies,
+  pointsLedger,
 } from "../../db/schema";
 import {
   validateJson,
@@ -240,6 +242,44 @@ export const registerCrudRoutes = (app: PostsRouteApp): void => {
 
         if (!newPost) {
           return error(c, "POST_CREATION_FAILED", "Failed to create post", 500);
+        }
+
+        // Auto-award points for POST_SUBMITTED
+        try {
+          const postPolicy = await db
+            .select()
+            .from(pointPolicies)
+            .where(
+              and(
+                eq(pointPolicies.siteId, data.siteId),
+                eq(pointPolicies.reasonCode, "POST_SUBMITTED"),
+                eq(pointPolicies.isActive, true),
+              ),
+            )
+            .get();
+
+          if (postPolicy) {
+            const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+            const settleMonth = `${kstNow.getUTCFullYear()}-${String(kstNow.getUTCMonth() + 1).padStart(2, "0")}`;
+            await db.insert(pointsLedger).values({
+              userId: user.id,
+              siteId: data.siteId,
+              postId,
+              amount: postPolicy.defaultAmount,
+              reasonCode: "POST_SUBMITTED",
+              reasonText: postPolicy.name,
+              settleMonth,
+              occurredAt: new Date(),
+            });
+          }
+        } catch (pointErr) {
+          logger.warn("Failed to auto-award POST_SUBMITTED points", {
+            error: {
+              name: pointErr instanceof Error ? pointErr.name : "Unknown",
+              message:
+                pointErr instanceof Error ? pointErr.message : String(pointErr),
+            },
+          });
         }
 
         return success(c, { post: newPost }, 201);

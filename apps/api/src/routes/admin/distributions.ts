@@ -17,6 +17,9 @@ const DISTRIBUTION_REASON_CODES = [
   "VOTE_REWARD_RANK_3",
   "MONTHLY_BONUS",
   "QUIZ_PASS",
+  "POST_SUBMITTED",
+  "EDUCATION_COMPLETION",
+  "ATTENDANCE_CHECK_IN",
 ] as const;
 
 app.get("/distributions", requireManagerOrAdmin, async (c) => {

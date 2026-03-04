@@ -4,14 +4,18 @@ import { drizzle } from "drizzle-orm/d1";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { success, error } from "../../lib/response";
+import { createLogger } from "../../lib/logger";
 import {
   educationCompletions,
   educationContents,
   siteMemberships,
+  pointPolicies,
+  pointsLedger,
 } from "../../db/schema";
 import type { AppType } from "./helpers";
 
 const app = new Hono<AppType>();
+const logger = createLogger("education-completions");
 
 const CompletionSchema = z.object({
   contentId: z.string().min(1),
@@ -83,6 +87,45 @@ app.post("/", zValidator("json", CompletionSchema), async (c) => {
       })
       .returning()
       .get();
+  }
+
+  // Auto-award points for EDUCATION_COMPLETION (new completions only)
+  if (!existing) {
+    try {
+      const eduPolicy = await db
+        .select()
+        .from(pointPolicies)
+        .where(
+          and(
+            eq(pointPolicies.siteId, content.siteId),
+            eq(pointPolicies.reasonCode, "EDUCATION_COMPLETION"),
+            eq(pointPolicies.isActive, true),
+          ),
+        )
+        .get();
+
+      if (eduPolicy) {
+        const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+        const settleMonth = `${kstNow.getUTCFullYear()}-${String(kstNow.getUTCMonth() + 1).padStart(2, "0")}`;
+        await db.insert(pointsLedger).values({
+          userId: user.id,
+          siteId: content.siteId,
+          amount: eduPolicy.defaultAmount,
+          reasonCode: "EDUCATION_COMPLETION",
+          reasonText: eduPolicy.name,
+          settleMonth,
+          occurredAt: new Date(),
+        });
+      }
+    } catch (pointErr) {
+      logger.warn("Failed to auto-award EDUCATION_COMPLETION points", {
+        error: {
+          name: pointErr instanceof Error ? pointErr.name : "Unknown",
+          message:
+            pointErr instanceof Error ? pointErr.message : String(pointErr),
+        },
+      });
+    }
   }
 
   return success(c, { completion });

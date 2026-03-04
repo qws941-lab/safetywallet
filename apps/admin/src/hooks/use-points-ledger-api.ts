@@ -43,8 +43,11 @@ export function useAwardPoints() {
       userId: string;
       amount: number;
       reason: string;
-    }) =>
-      apiFetch(`/points/award`, {
+    }) => {
+      if (!siteId) {
+        return Promise.reject(new Error("현장이 선택되지 않았습니다."));
+      }
+      return apiFetch(`/points/award`, {
         method: "POST",
         body: JSON.stringify({
           siteId,
@@ -53,7 +56,8 @@ export function useAwardPoints() {
           reasonCode: "MANUAL_AWARD",
           reasonText: reason,
         }),
-      }),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "points"] });
       queryClient.invalidateQueries({ queryKey: ["admin", "members"] });

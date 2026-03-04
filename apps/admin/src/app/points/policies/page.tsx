@@ -33,7 +33,14 @@ export default function PointPoliciesPage() {
 
   const handleCreate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!currentSiteId) return;
+    if (!currentSiteId) {
+      toast({
+        title: "현장 미선택",
+        description: "현장을 먼저 선택해 주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       const data = extractCreateData(
         new FormData(e.currentTarget),
@@ -42,10 +49,14 @@ export default function PointPoliciesPage() {
       await createMutation.mutateAsync(data);
       toast({ title: "정책이 생성되었습니다." });
       setIsCreateOpen(false);
-    } catch {
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "정책 생성 중 오류가 발생했습니다.";
       toast({
         title: "생성 실패",
-        description: "정책 생성 중 오류가 발생했습니다.",
+        description: message,
         variant: "destructive",
       });
     }

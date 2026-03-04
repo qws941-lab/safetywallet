@@ -41,6 +41,7 @@ vi.mock("../../lib/logger", () => ({
   createLogger: vi.fn(() => ({
     debug: vi.fn(),
     info: vi.fn(),
+    warn: vi.fn(),
     error: vi.fn(),
   })),
 }));
@@ -168,6 +169,22 @@ vi.mock("../../db/schema", () => ({
     siteId: "siteId",
     role: "role",
     status: "status",
+  },
+  pointPolicies: {
+    siteId: "siteId",
+    reasonCode: "reasonCode",
+    isActive: "isActive",
+    defaultAmount: "defaultAmount",
+  },
+  pointsLedger: {
+    id: "id",
+    userId: "userId",
+    siteId: "siteId",
+    amount: "amount",
+    reasonCode: "reasonCode",
+    reasonText: "reasonText",
+    settleMonth: "settleMonth",
+    occurredAt: "occurredAt",
   },
 }));
 

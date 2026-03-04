@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Button, Card, Input } from "@safetywallet/ui";
+import { Button, Card, Input, useToast } from "@safetywallet/ui";
 import { DataTable, type Column } from "@/components/data-table";
 import {
   usePointsLedger,
@@ -25,6 +25,7 @@ export default function PointsPage() {
   const { data: ledger = [], isLoading } = usePointsLedger();
   const { data: members = [] } = useMembers();
   const awardMutation = useAwardPoints();
+  const { toast } = useToast();
 
   const [selectedMember, setSelectedMember] = useState("");
   const [amount, setAmount] = useState("");
@@ -43,6 +44,17 @@ export default function PointsPage() {
           setSelectedMember("");
           setAmount("");
           setReason("");
+          toast({ title: "포인트가 지급되었습니다." });
+        },
+        onError: (err) => {
+          toast({
+            title: "지급 실패",
+            description:
+              err instanceof Error
+                ? err.message
+                : "포인트 지급 중 오류가 발생했습니다.",
+            variant: "destructive",
+          });
         },
       },
     );

@@ -1,7 +1,13 @@
 import type { Context } from "hono";
 import { drizzle } from "drizzle-orm/d1";
-import { eq, and, inArray, or, isNull } from "drizzle-orm";
-import { attendance, users, siteMemberships } from "../../db/schema";
+import { eq, and, inArray, or, isNull, gte } from "drizzle-orm";
+import {
+  attendance,
+  users,
+  siteMemberships,
+  pointsLedger,
+  pointPolicies,
+} from "../../db/schema";
 import { success, error } from "../../lib/response";
 import type { Env, AuthContext } from "../../types";
 import { getTodayRange } from "../../utils/common";
@@ -190,6 +196,116 @@ export async function handleSync(c: AppContext) {
           }),
       );
       await dbBatchChunked(db, ops);
+
+      // Auto-award attendance check-in points
+      try {
+        const awardSiteIds = [
+          ...new Set(insertBatch.map((r) => r.siteId).filter(Boolean)),
+        ] as string[];
+
+        const policies =
+          awardSiteIds.length > 0
+            ? await db
+                .select()
+                .from(pointPolicies)
+                .where(
+                  and(
+                    inArray(pointPolicies.siteId, awardSiteIds),
+                    eq(pointPolicies.reasonCode, "ATTENDANCE_CHECK_IN"),
+                    eq(pointPolicies.isActive, true),
+                  ),
+                )
+            : [];
+
+        if (policies.length > 0) {
+          const policyBySite = new Map(policies.map((p) => [p.siteId, p]));
+
+          const kstNow = new Date(Date.now() + 9 * 60 * 60 * 1000);
+          const todayStr = kstNow.toISOString().slice(0, 10);
+          const kstTodayStart = new Date(`${todayStr}T00:00:00+09:00`);
+          const settleMonth = `${kstNow.getFullYear()}-${String(kstNow.getMonth() + 1).padStart(2, "0")}`;
+
+          // Collect unique (userId, siteId) pairs for sites with policies
+          const eligiblePairs: { userId: string; siteId: string }[] = [];
+          const seenPairs = new Set<string>();
+          for (const record of insertBatch) {
+            if (
+              !record.userId ||
+              !record.siteId ||
+              !policyBySite.has(record.siteId)
+            )
+              continue;
+            const pairKey = `${record.userId}|${record.siteId}`;
+            if (!seenPairs.has(pairKey)) {
+              seenPairs.add(pairKey);
+              eligiblePairs.push({
+                userId: record.userId,
+                siteId: record.siteId,
+              });
+            }
+          }
+
+          if (eligiblePairs.length > 0) {
+            // Check existing awards today for dedup
+            const existingAwards = new Set<string>();
+            for (const chunk of chunkArray(
+              eligiblePairs,
+              IN_QUERY_CHUNK_SIZE,
+            )) {
+              const conditions = chunk.map((p) =>
+                and(
+                  eq(pointsLedger.userId, p.userId),
+                  eq(pointsLedger.siteId, p.siteId),
+                  eq(pointsLedger.reasonCode, "ATTENDANCE_CHECK_IN"),
+                  gte(pointsLedger.occurredAt, kstTodayStart),
+                ),
+              );
+              const existing = await db
+                .select({
+                  userId: pointsLedger.userId,
+                  siteId: pointsLedger.siteId,
+                })
+                .from(pointsLedger)
+                .where(or(...conditions));
+              for (const e of existing) {
+                existingAwards.add(`${e.userId}|${e.siteId}`);
+              }
+            }
+
+            // Award points for users not yet awarded today
+            const pointInserts = eligiblePairs
+              .filter((p) => !existingAwards.has(`${p.userId}|${p.siteId}`))
+              .map((p) => {
+                const policy = policyBySite.get(p.siteId)!;
+                return db.insert(pointsLedger).values({
+                  userId: p.userId,
+                  siteId: p.siteId,
+                  amount: policy.defaultAmount,
+                  reasonCode: "ATTENDANCE_CHECK_IN",
+                  reasonText: "출근 체크인 자동 포인트",
+                  settleMonth,
+                  occurredAt: new Date(),
+                });
+              });
+
+            if (pointInserts.length > 0) {
+              await dbBatchChunked(db, pointInserts);
+              logger.info(
+                `[Attendance] Auto-awarded ${pointInserts.length} check-in points`,
+              );
+            }
+          }
+        }
+      } catch (pointErr) {
+        // Never block attendance sync on point award failure
+        logger.warn("[Attendance] Auto-award points failed", {
+          error: {
+            name: pointErr instanceof Error ? pointErr.name : "UnknownError",
+            message:
+              pointErr instanceof Error ? pointErr.message : String(pointErr),
+          },
+        });
+      }
     } catch (err) {
       logger.error("Batch insert failed", {
         count: insertBatch.length,

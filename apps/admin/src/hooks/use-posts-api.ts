@@ -65,6 +65,7 @@ export function useAdminPosts(filters: PostFilters) {
   if (filters.startDate)
     params.set("startDate", filters.startDate.toISOString());
   if (filters.endDate) params.set("endDate", filters.endDate.toISOString());
+  params.set("limit", "100");
 
   return useQuery({
     queryKey: ["admin", "posts", siteId, filters],

@@ -11,7 +11,7 @@
 - `labeler.yml`
 - `release-drafter.yml`
 - `FUNDING.yml`
-- `ISSUE_TEMPLATE/` (3 templates: `bug_report.yml`, `feature_request.yml`, `config.yml`)
+- `ISSUE_TEMPLATE/` (4 templates: `bug_report.yml`, `feature_request.yml`, `task.yml`, `config.yml`)
 - `workflows/` (16 workflow files + local AGENTS)
 
 ## CONFIG SNAPSHOT

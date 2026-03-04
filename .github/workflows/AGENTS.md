@@ -11,7 +11,7 @@
 - `auto-merge.yml` - `Auto Merge`
 - `ci.yml` - `CI`
 - `codex-auto-issue.yml` - `Codex Auto-Issue`
-- `codex-triage.yml` - `Codex Triage`
+- `codex-triage.yml` - `Codex Auto-Label`
 - `commitlint.yml` - `Commitlint`
 - `deploy-monitoring.yml` - `Deployment Monitoring`
 - `e2e-auto-issue.yml` - `E2E Failure Issue`

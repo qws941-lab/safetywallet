@@ -1,65 +1,61 @@
-name: Feature Request
-description: Suggest a new feature or improvement
+name: ✨ 기능 요청
+description: 새로운 기능이나 개선 사항을 제안해 주세요
 labels: ["type:feature"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for suggesting a feature!
-        Please describe your idea clearly so we can evaluate and prioritize it.
+        기능 제안을 환영합니다!
+        아래 항목을 작성해 주시면 검토 후 반영하겠습니다.
+
+  - type: dropdown
+    id: app
+    attributes:
+      label: 관련 앱
+      description: 어느 앱에 관련된 요청인가요?
+      options:
+        - 근로자 앱 (Worker)
+        - 관리자 대시보드 (Admin)
+        - API / 서버
+        - 전체 / 잘 모르겠음
+    validations:
+      required: true
 
   - type: dropdown
     id: kind
     attributes:
-      label: Kind
-      description: What kind of change is this?
+      label: 요청 유형
+      description: 어떤 종류의 요청인가요?
       options:
-        - New feature — Something that doesn't exist yet
-        - Enhancement — Improvement to existing functionality
-        - Performance — Speed, efficiency, or resource optimization
-        - Developer experience — Tooling, CI/CD, or workflow improvement
+        - 새 기능 — 아직 없는 기능을 추가
+        - 기존 기능 개선 — 있는 기능을 더 좋게
+        - 성능 개선 — 더 빠르게, 더 안정적으로
+        - 사용성 개선 — 더 편하게 쓸 수 있도록
     validations:
       required: true
 
   - type: textarea
     id: summary
     attributes:
-      label: Summary
-      description: A brief summary of the feature you'd like.
+      label: 어떤 기능이 필요하세요?
+      description: 원하시는 기능을 간단히 설명해 주세요.
+      placeholder: "예: 출퇴근 기록을 엑셀로 다운로드하고 싶어요"
     validations:
       required: true
 
   - type: textarea
     id: motivation
     attributes:
-      label: Motivation
-      description: Why is this feature needed? What problem does it solve?
+      label: 왜 필요한가요?
+      description: 이 기능이 있으면 어떤 점이 좋아지나요?
+      placeholder: "예: 매달 수기로 정리하는 시간을 줄일 수 있어요"
     validations:
       required: true
 
   - type: textarea
-    id: solution
+    id: details
     attributes:
-      label: Proposed Solution
-      description: Describe your preferred solution or approach.
-    validations:
-      required: false
-
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: Alternatives Considered
-      description: Any alternative solutions or features you've considered.
-    validations:
-      required: false
-
-  - type: textarea
-    id: acceptance
-    attributes:
-      label: Acceptance Criteria
-      description: How will we know this feature is complete?
-      placeholder: |
-        - [ ] Criterion 1
-        - [ ] Criterion 2
+      label: 추가 설명 (선택)
+      description: 구체적인 아이디어, 참고 화면, 또는 원하는 동작 방식이 있으면 적어 주세요.
     validations:
       required: false

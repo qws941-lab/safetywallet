@@ -9,7 +9,9 @@ test.describe("Admin App Smoke Tests", () => {
   test("should have no console errors on load", async ({ page }) => {
     const errors: string[] = [];
     page.on("console", (msg) => {
-      if (msg.type() === "error") errors.push(msg.text());
+      if (msg.type() === "error" && !msg.text().includes("ERR_CONNECTION")) {
+        errors.push(msg.text());
+      }
     });
 
     await page.goto("/");

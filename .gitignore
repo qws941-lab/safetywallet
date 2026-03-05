@@ -38,6 +38,8 @@ test-results/
 blob-report/
 playwright-report/
 playwright/.cache/
+e2e/.auth/
+# Playwright auth state
 
 # Debug screenshots (root-level only)
 /*.png

@@ -46,7 +46,9 @@ function PostDetailContent() {
   const [showResubmitForm, setShowResubmitForm] = useState(false);
   const [supplementaryContent, setSupplementaryContent] = useState("");
 
-  const post = data?.data?.post;
+  const post =
+    (data as { data?: { post?: unknown }; post?: unknown })?.data?.post ??
+    (data as { post?: unknown })?.post;
 
   // API 응답에 reviews가 포함될 수 있으나 PostDto에 미정의
   interface ReviewEntry {

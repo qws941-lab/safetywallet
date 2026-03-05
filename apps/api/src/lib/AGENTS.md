@@ -7,7 +7,7 @@ Contains business helpers, adapter clients, and cross-cutting utilities.
 
 ## FILES/STRUCTURE
 
-- Top-level runtime `.ts` files: 22.
+- Top-level runtime `.ts` files: 23.
 - Local type shims: `piexifjs.d.ts`, `sql-js.d.ts`.
 - Subdirectories:
   - `fas/` - FAS adapter functions/config.

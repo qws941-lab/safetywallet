@@ -1,42 +1,22 @@
-# AGENTS: TYPES/I18N
+# I18n
 
-## SCOPE DELTA
+Typed locale catalog contracts for `@safetywallet/types`.
 
-- Folder owns typed locale catalog contracts.
-- Parent owns package-level policy.
+## Files
 
-## FILE INVENTORY (2)
+- `ko.ts` — Korean catalog (`as const`, dot-notated `section.key` format, 27 section groups).
+- `index.ts` — locale registry (`const i18n = { ko }`) + exported types (`I18n`, `Ko`).
 
-- `ko.ts` - Korean catalog (`as const`, dot-notated keys).
-- `index.ts` - locale registry + exported types.
+## Conventions
 
-## KEY TOPOLOGY
+- `ko.ts` exports `export const ko = { ... } as const` and `export type Ko = typeof ko`.
+- `index.ts` exports `I18n = typeof i18n` for type-safe locale access.
+- Flat key structure: `section.key` format, no nested locale objects.
+- Section groups (27): `login`, `register`, `home`, `posts`, `postsCreate`, `postsView`, `points`, `votes`, `actions`, `actionsCreate`, `actionsView`, `announcements`, `education`, `educationQuizTake`, `educationView`, `profile`, `nav`, `common`, `unsafeWarning`, `authGuard`, `attendanceGuard`, `layout`, `providers`, `header`, `pointsCard`, `postCard`, `rankingCard`.
+- New keys go under existing semantic sections when possible.
+- New section prefix is a contract change; update consumers and tests.
 
-- Flat object; no nested locale objects.
-- Key format: `section.key`.
-- Active section groups (27):
-  `login`, `register`, `home`, `posts`, `postsCreate`, `postsView`,
-  `points`, `votes`, `actions`, `actionsCreate`, `actionsView`,
-  `announcements`, `education`, `educationQuizTake`, `educationView`,
-  `profile`, `nav`, `common`, `unsafeWarning`, `authGuard`, `attendanceGuard`,
-  `layout`, `providers`, `header`, `pointsCard`, `postCard`, `rankingCard`.
+## Anti-patterns
 
-## TYPING CONTRACT
-
-- `ko.ts` must keep `export const ko = { ... } as const`.
-- `ko.ts` must keep `export type Ko = typeof ko`.
-- `index.ts` must keep `const i18n = { ko }`.
-- `index.ts` must export `I18n = typeof i18n`.
-
-## MODULE RULES
-
-- New key: place under existing semantic section when possible.
-- New section prefix: treat as contract change; update consumers/tests.
-- Keep strings production-grade Korean copy.
-- Keep only section-divider comments; no runtime helper logic in this folder.
-
-## ANTI-DRIFT
-
-- No nested key hierarchy.
+- No nested key hierarchy beyond `section.key`.
 - No alias locale objects with divergent keys.
-- No stale section list/count in this file.

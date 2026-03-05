@@ -1,45 +1,45 @@
-# AGENTS: WORKER COMPONENTS
+# Worker Components
 
-## PURPOSE
+Reusable UI, guard, and provider layer for worker pages.
 
-- Reusable UI/guard/provider layer for worker pages.
-- Owns route shell parts, status banners, cards, modal wrappers.
-- Keeps network/state access delegated to hooks/lib/stores.
+## Purpose
 
-## FILES/STRUCTURE
+- Route shell parts (header, bottom nav), status banners, cards, modals
+- Auth/attendance guards for route protection
+- Provider composition for app-wide context wrappers
+- Network/state access delegated to hooks/lib/stores
 
-- Component files (13):
-  - `attendance-guard.tsx`
-  - `auth-guard.tsx`
-  - `bottom-nav.tsx`
-  - `header.tsx`
-  - `install-banner.tsx`
-  - `locale-switcher.tsx`
-  - `offline-queue-indicator.tsx`
-  - `points-card.tsx`
-  - `post-card.tsx`
-  - `providers.tsx`
-  - `ranking-card.tsx`
-  - `system-banner.tsx`
-  - `unsafe-warning-modal.tsx`
-- Tests under `components/__tests__/` mirror component names.
+## Files
 
-## CONVENTIONS
+- `attendance-guard.tsx` — attendance gate with loading/fallback modes
+- `auth-guard.tsx` — auth redirect guard, public path allowlist
+- `bottom-nav.tsx` — bottom navigation bar, center CTA → `/posts/new`
+- `header.tsx` — attendance chip + locale switcher + system banner
+- `install-banner.tsx` — PWA install prompt with 7-day dismissal
+- `locale-switcher.tsx` — language selector from `i18n/config` locales
+- `offline-queue-indicator.tsx` — queue length display + manual replay
+- `points-card.tsx` — points summary card
+- `post-card.tsx` — safety report card with status badges + urgent marker
+- `providers.tsx` — app-wide provider composition (authoritative order)
+- `ranking-card.tsx` — leaderboard ranking card
+- `system-banner.tsx` — severity-based banner (critical/warning/info)
+- `unsafe-warning-modal.tsx` — unsafe condition warning modal
+- `__tests__/` — component tests mirroring component names
 
-- Provider composition in `providers.tsx` is authoritative for app-wide wrappers.
-- `AuthGuard` public path rule: `/`, `/login`, `/login/*` only.
-- `AuthGuard` clears React Query cache on logged-out hydrated state.
-- `AttendanceGuard` is attendance gate (`useAttendanceToday`) with loading and fallback modes.
-- `Header` renders attendance chip + `LocaleSwitcher` + `SystemBanner`.
-- `BottomNav` center CTA is `/posts/new`; center label intentionally empty.
-- `OfflineQueueIndicator` polls queue length and supports manual replay.
-- `SystemBanner` severity map: `critical | warning | info`.
-- `PostCard` enum badge mapping includes review/action statuses and urgent marker.
+## Conventions
 
-## ANTI-PATTERNS
+- Provider order in `providers.tsx`:
+  `QueryClientProvider → I18nProvider → AuthGuard → {children} + OfflineQueueIndicator + Toaster + InstallBanner`
+- `AuthGuard` public paths: `/`, `/login`, `/login/*` only
+- `AuthGuard` clears React Query cache on logged-out hydrated state
+- `AttendanceGuard` uses `useAttendanceToday` with polling
+- `BottomNav` center label intentionally empty
+- `PostCard` badge mapping covers review/action statuses + urgent marker
 
-- Do not call API directly from components unless hook abstraction is intentionally absent.
-- Do not widen public-route allowlist in `AuthGuard` without matching auth policy changes.
-- Do not remove query cache clear on logout; stale cross-session data leaks.
-- Do not hardcode locale list in `LocaleSwitcher`; consume `i18n/config` exports.
-- Do not remove queue indicator/storage listeners; offline replay visibility is required.
+## Anti-Patterns
+
+- Do not call API directly from components; use hook abstractions
+- Do not widen `AuthGuard` public-route allowlist without auth policy changes
+- Do not remove query cache clear on logout; prevents stale cross-session data
+- Do not hardcode locale list in `LocaleSwitcher`; consume `i18n/config`
+- Do not remove queue indicator storage listeners; offline replay visibility required

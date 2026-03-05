@@ -1,54 +1,30 @@
-# AGENTS: TYPES/DTO
+# DTO
 
-## SCOPE DELTA
+Domain data transfer object contracts shared between API and apps.
 
-- Folder owns DTO contract files only.
-- Parent (`packages/types/AGENTS.md`) owns package-wide rules.
+## Files
 
-## FILE INVENTORY (12)
+- `index.ts` — barrel re-exporting all 11 domain DTO files.
+- `action.dto.ts` — `CreateActionDto`, `ActionDto`, `ActionImageDto`, `UpdateActionStatusDto`.
+- `analytics.dto.ts` — `TrendDataPointDto`, `TrendFilterDto`, `PointsDistributionDto`.
+- `announcement.dto.ts` — `CreateAnnouncementDto`, `AnnouncementDto`, `UpdateAnnouncementDto`.
+- `auth.dto.ts` — `OtpRequestDto`, `OtpVerifyDto`, `TokenRefreshDto`, `AuthResponseDto`, `TokenPayloadDto`, `MeResponseDto`, `RegisterDto`.
+- `education.dto.ts` — 18 interfaces: content, quiz, attempt, statutory training, TBM records.
+- `points.dto.ts` — `AwardPointsDto`, `RevokePointsDto`, `PointsLedgerDto`, `PointsBalanceDto`, `PointsHistoryItemDto`, `PointsHistoryFilterDto`, `CreatePolicyDto`, `UpdatePolicyDto`.
+- `post.dto.ts` — `CreatePostDto`, `PostDto`, `PostImageDto`, `PostListDto`, `PostFilterDto`.
+- `review.dto.ts` — `ReviewActionDto`, `ReviewDto`.
+- `site.dto.ts` — `SiteDto`, `CreateSiteDto`, `UpdateSiteDto`, `SiteMemberDto`, `UpdateMemberStatusDto`, `DashboardStatsDto`.
+- `user.dto.ts` — `UserDto`, `UserProfileDto`, `UpdateProfileDto`.
+- `vote.dto.ts` — `VoteCandidateDto`, `CreateVoteCandidateDto`, `VoteResultDto`, `VoteDto`, `MyVoteDto`, `VotePeriodSummaryDto`, `VoteResultExportDto`.
 
-- `index.ts`
-- `action.dto.ts`
-- `analytics.dto.ts`
-- `announcement.dto.ts`
-- `auth.dto.ts`
-- `education.dto.ts`
-- `points.dto.ts`
-- `post.dto.ts`
-- `review.dto.ts`
-- `site.dto.ts`
-- `user.dto.ts`
-- `vote.dto.ts`
+## Conventions
 
-## DOMAIN MAP
-
-- `action`: corrective actions + images + status transitions.
-- `analytics`: trend + distribution response contracts.
-- `announcement`: create/update/list/detail contracts.
-- `auth`: OTP/login/token/me envelopes.
-- `education`: content, quiz, statutory training, TBM records.
-- `points`: award/revoke/balance/history contracts.
-- `post`: create/list/detail/filter + media.
-- `review`: review action/status contracts.
-- `site`: site/member/dashboard contracts.
-- `user`: user profile/update contracts.
-- `vote`: candidate/vote/result/export contracts.
-
-## BARREL RULES
-
-- `index.ts` re-exports all 11 domain DTO files.
-- Add/remove DTO file: update barrel in same change.
+- All enum-backed fields import from `../enums`.
+- Barrel (`index.ts`) re-exports all domain files; add/remove DTO file → update barrel in same commit.
+- Preserve optional/null semantics matching API payloads.
 - Keep domain grouping order stable for low-noise diffs.
 
-## EDIT GUARDRAILS
+## Anti-patterns
 
-- Keep enum-backed fields imported from `../enums`.
-- Preserve optional/null semantics already used by API payloads.
-- Preserve nested list/detail object shapes consumed by apps/e2e.
-- No fallback to `any` or untyped extension maps.
-
-## ANTI-DRIFT
-
-- No stale file count.
-- No undocumented DTO file additions.
-- No duplicate DTO ownership text from parent AGENTS.
+- No `any` or untyped extension maps.
+- No nested DTO object shapes that duplicate enum values.

@@ -1,57 +1,52 @@
-# AGENTS: APP ROUTES
+# App Routes
 
-## SCOPE
+## Scope
 
-- `apps/admin/src/app` route layer only.
-- App Router pages, route errors, route-local helpers/components.
-- No hook/store internals (documented in sibling AGENTS files).
+Next.js 15 App Router route layer. Pages, error boundaries, route-local helpers/components.
 
-## ROUTE SYSTEM FACTS
+## Route System
 
-- Total route pages: `30` (`**/page.tsx`).
-- Root redirect: `page.tsx` -> `/dashboard`.
+- Total route pages: 31 (`**/page.tsx`).
+- Root redirect: `page.tsx` → `/dashboard`.
 - Shared wrappers: `layout.tsx`, `error.tsx`, `global-error.tsx`, `not-found.tsx`.
 - CSS entry: `globals.css`.
-- Flat route tree (no active `(dashboard)` group directory).
+- Tests: `page.test.tsx`, `not-found.test.tsx`.
 
-## PAGE GROUPS
+## Page Groups
 
 - Core: `dashboard`, `dashboard/analytics`, `dashboard/recommendations`.
 - Operations: `attendance`, `attendance/sync`, `attendance/unmatched`, `monitoring`, `sync-errors`.
 - Content: `posts`, `posts/[id]`, `actions`, `announcements`.
+- Issues: `issues`.
 - Voting: `votes`, `votes/new`, `votes/candidates`, `votes/[id]`, `votes/[id]/candidates/new`.
 - Governance: `approvals`, `audit`, `recommendations`, `settings`.
-- Members and rewards: `members`, `members/[id]`, `rewards`.
+- Members/rewards: `members`, `members/[id]`, `rewards`.
 - Points: `points`, `points/policies`, `points/settlement`.
 - Training: `education`.
 - Auth: `login`.
 
-## ROUTE-LOCAL FILES
+## Route-Local Files
 
-- Attendance: `attendance/components/*`, `attendance-helpers.ts`.
+- Attendance: `attendance/components/*`, `attendance-helpers.ts`, `attendance-helpers.test.ts`.
 - Votes: `votes/components/*`, `votes-helpers.ts`.
 - Education: `education/components/*`, `education-helpers.ts`.
-- Posts detail: `posts/[id]/post-detail.tsx` + `components/*` + helper.
+- Posts detail: `posts/[id]/post-detail.tsx`, `post-detail-helpers.ts`, `[id]/components/*`.
 
-## PATTERNS
+## Patterns
 
-- Dynamic wrappers for static export:
-  - `posts/[id]/page.tsx`
-  - `votes/[id]/page.tsx`
-  - `votes/[id]/candidates/new/page.tsx`
-  - `members/[id]/page.tsx`
-- Wrapper pages use placeholder `generateStaticParams` and hand off to client components.
-- Feature pages keep orchestration in `page.tsx`; UI blocks in `components/*`.
+- Dynamic wrappers for static export: `posts/[id]`, `votes/[id]`, `votes/[id]/candidates/new`, `members/[id]`.
+- Wrapper pages use placeholder `generateStaticParams` + client component handoff.
+- Feature pages keep orchestration in `page.tsx`; UI blocks in `components/`.
 
-## SECTION DOC LINKS
+## Section Doc Links
 
-- `attendance/AGENTS.md` - logs/unmatched/sync behavior.
-- `posts/AGENTS.md` - post review list/detail.
-- `votes/AGENTS.md` - month-period vote workflows.
-- `education/AGENTS.md` - education tab architecture.
+- `attendance/AGENTS.md` — logs/unmatched/sync.
+- `posts/AGENTS.md` — post review list/detail.
+- `votes/AGENTS.md` — month-period vote workflows.
+- `education/AGENTS.md` — education tab architecture.
 
-## GOTCHAS
+## Gotchas
 
-- `attendance/page.tsx` already renders unmatched tab state; deep-link unmatched page still required.
-- `approvals/page.tsx` is active; avoid stale docs marking it as placeholder.
+- `attendance/page.tsx` renders unmatched tab state; deep-link unmatched page still required.
+- `approvals/page.tsx` is active; not a placeholder.
 - Static export compatibility depends on wrapper routes staying lightweight.

@@ -1,38 +1,82 @@
-# AGENTS: API APP ROOT
+# API
 
 ## PURPOSE
 
-Runtime composition for `apps/api/src/index.ts`.
-Owns wiring only: middleware order, route mounts, queue/scheduler exports, static asset fallback.
+Cloudflare Workers Hono API. Runtime composition in `src/index.ts`.
+Owns middleware chain, route mounts, queue consumer, static asset fallback.
 
-## FILES/STRUCTURE
+## STRUCTURE
 
-- `src/index.ts` - worker entrypoint and integration surface.
-- `src/types.ts` - `Env` binding contract used by all route/middleware modules.
-- `src/routes/` - API modules (core and admin subtree).
-- `src/middleware/` - global and handler-level guards.
-- `src/durable-objects/` + `src/jobs/` - scheduler/rate-limit runtime classes and job logic.
+```
+├── drizzle.config.ts          # Drizzle ORM config for D1
+├── package.json
+├── seed.sql                   # Development seed data
+├── vitest.config.ts           # Test runner config
+├── worker-configuration.d.ts  # Generated CF binding types
+├── wrangler.toml              # Worker config, bindings, environments
+├── migrations/                # D1 SQL migrations and snapshots
+└── src/
+    ├── index.ts               # Worker entrypoint, middleware chain, route mounts
+    ├── types.ts               # Env binding contract
+    ├── db/                    # Drizzle schema, migrations tooling
+    ├── durable-objects/       # RateLimiter DO
+    ├── jobs/                  # Scheduled job registry and implementations
+    ├── lib/                   # Shared business logic (25 modules)
+    ├── middleware/            # Request guards and observability hooks
+    ├── routes/                # API route layer (/api/*)
+    ├── utils/                 # Pure utility functions
+    ├── validators/            # Zod request validators
+    └── __tests__/             # Integration/unit tests
+```
 
-## CURRENT INTEGRATION FACTS
+## BINDINGS (wrangler.toml)
 
-- `src/index.ts` exports `app`, `RateLimiter`, `JobScheduler`, and default `{ fetch, queue }`.
-- `/api` mounts 18 route modules: `auth`, `attendance`, `votes`, `recommendations`, `posts`, `actions`, `users`, `sites`, `announcements`, `points`, `reviews`, `fas`, `disputes`, `policies`, `approvals`, `education`, `images`, `notifications`.
-- `/api/admin` is mounted through `src/routes/admin/index.ts`.
-- Direct endpoints defined in root file: `GET /api/health`, `GET /api/system/status`, `POST /api/fas-sync`.
-- API catch-all exists: `api.all("*")` returns JSON 404 envelope.
-- Static fallback branch serves from `ASSETS` and rewrites hostname `admin.*` to `/admin/*` asset path.
+| Binding            | Type           | Purpose                        |
+| ------------------ | -------------- | ------------------------------ |
+| DB                 | D1             | Primary database               |
+| R2                 | R2             | Image storage                  |
+| STATIC             | R2             | Static frontend files          |
+| ACETIME_BUCKET     | R2             | Acetime data                   |
+| FAS_HYPERDRIVE     | Hyperdrive     | FAS MariaDB direct connection  |
+| KV                 | KV Namespace   | Cache, sessions, feature flags |
+| ANALYTICS          | Analytics      | Request metrics                |
+| NOTIFICATION_QUEUE | Queue          | Notification delivery pipeline |
+| AI                 | Workers AI     | Hazard classification, privacy |
+| RATE_LIMITER       | Durable Object | Per-user/IP rate limiting      |
+
+## MIDDLEWARE CHAIN ORDER
+
+`initFasConfig` → `securityHeaders` → `requestLoggerMiddleware` → `analyticsMiddleware` → `honoLogger` → dynamic CORS
+
+## ROUTE MOUNTS
+
+18 modules under `/api`: auth, attendance, votes, recommendations, posts, actions, users, sites, announcements, points, reviews, fas, disputes, policies, approvals, education, images, notifications.
+
+Admin subtree at `/api/admin` via `src/routes/admin/index.ts`.
+
+Direct endpoints in `src/index.ts`: `GET /api/health`, `GET /api/system/status`, `POST /api/fas-sync`.
+
+API catch-all: `api.all("*")` returns JSON 404 envelope.
+
+Static fallback serves from `ASSETS`; hostname `admin.*` rewrites to `/admin/*` asset path.
+
+## EXPORTS
+
+`src/index.ts` exports: `app`, `RateLimiter`, default `{ fetch, queue }`.
+
+Queue consumer delegates to `processNotificationBatch` from `src/lib/notification-queue.ts`.
 
 ## CONVENTIONS
 
-- Preserve middleware order in `src/index.ts`: `initFasConfig` -> `securityHeaders` -> `requestLoggerMiddleware` -> `analyticsMiddleware` -> `honoLogger` -> dynamic CORS.
-- Keep CORS allow-headers aligned with mobile clients: `Device-Id`, `X-Device-Id`.
-- Keep API 404 catch-all inside `api` app, before mounting static fallback on root app.
-- Keep `/api/system/status` envelope stable (`success`, `data`, `timestamp`) for outage banner polling.
-- Keep queue handler delegated to `processNotificationBatch` from `src/lib/notification-queue.ts`.
+- Preserve middleware order — auth, analytics, CORS depend on sequence.
+- CORS allow-headers include `Device-Id`, `X-Device-Id` for mobile clients.
+- API 404 catch-all stays inside `api` app, before static fallback on root app.
+- `/api/system/status` envelope: `{ success, data: { notices, hasIssues }, timestamp }`.
+- Response helpers: `success()` / `error()` from `src/lib/response.ts`.
 
 ## ANTI-PATTERNS
 
-- Do not move admin/worker-specific routes into static fallback block.
-- Do not reorder middleware chain without checking auth, analytics, and CORS side effects.
+- Do not move admin/worker routes into static fallback block.
+- Do not reorder middleware chain without checking auth, analytics, CORS side effects.
 - Do not duplicate route registration in both root app and sub-router modules.
-- Do not change `/api/fas-sync` auth shape (`secret` gate) without updating operational callers.
+- Do not change `/api/fas-sync` auth shape (`secret` gate) without updating callers.

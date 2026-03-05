@@ -7,7 +7,7 @@ Scope is only migration SQL ordering and Drizzle metadata state.
 
 ## FILES/STRUCTURE
 
-- SQL files present: 16 (`0000` through `0015`, with two `0003_*` files, no `0011_*`).
+- SQL files present: 18 (`0000` through `0017`, with two `0003_*` files, no `0011_*`).
 - Current SQL set:
   - `0000_lovely_jocasta.sql`
   - `0001_add_user_pii_encrypted.sql`
@@ -25,7 +25,9 @@ Scope is only migration SQL ordering and Drizzle metadata state.
   - `0013_add_quiz_types_education_source.sql`
   - `0014_add_media_type_to_post_images.sql`
   - `0015_add_missing_indexes.sql`
-- `meta/_journal.json` and snapshots currently: `0000_snapshot.json`, `0012_snapshot.json`.
+  - `0016_seed_education_contents.sql`
+  - `0017_illegal_norman_osborn.sql`
+- `meta/_journal.json` and snapshots currently: `0000_snapshot.json`, `0012_snapshot.json`, `0017_snapshot.json`.
 
 ## CONVENTIONS
 

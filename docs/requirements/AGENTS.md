@@ -1,37 +1,26 @@
-# AGENTS: DOCS/REQUIREMENTS
+# Requirements
 
-## SCOPE DELTA
+Product requirements, PRDs, and implementation verification documents.
 
-- Requirements and PRD subtree only.
-- Parent `docs/AGENTS.md` owns docs-root governance.
+## Files
 
-## INVENTORY (CURRENT)
+- `REQUIREMENTS_CHECKLIST.md` — implementation status ledger (source of truth).
+- `SafetyWallet_PRD_v1.1.md` — baseline product requirement document.
+- `ELK_INDEX_PREFIX_REQUIREMENTS.md` — ELK index prefix technical requirements.
+- `Phase3_UI_Simplification_PRD.md` — Phase 3 UI simplification spec.
+- `IMPLEMENTATION_VERIFICATION_CHECKLIST.md` — code-based implementation verification checklist.
+- `REGISTRATION_VERIFICATION_REPORT.md` — registration flows verification report.
+- `archived/SafetyWallet_Implementation_Plan_v1.0.md` — historical implementation plan (archived).
 
-- `SafetyWallet_PRD_v1.1.md`
-- `REQUIREMENTS_CHECKLIST.md`
-- `ELK_INDEX_PREFIX_REQUIREMENTS.md`
-- `Phase3_UI_Simplification_PRD.md`
-- `archived/SafetyWallet_Implementation_Plan_v1.0.md`
-- `AGENTS.md`
+## Conventions
 
-## FILE ROLES
+- Requirements must be testable with observable evidence.
+- Superseded requirements annotated with context and date.
+- Checklist-vs-PRD divergence explicitly called out.
+- Archived docs stay outside active root file list.
+- Operations runbook content belongs in `docs/`, not here.
 
-- `REQUIREMENTS_CHECKLIST.md`: implementation status ledger.
-- `SafetyWallet_PRD_v1.1.md`: baseline product requirement source.
-- `ELK_INDEX_PREFIX_REQUIREMENTS.md`: focused technical requirement set.
-- `Phase3_UI_Simplification_PRD.md`: phase-specific spec/history.
-- `archived/SafetyWallet_Implementation_Plan_v1.0.md`: historical only.
+## Anti-patterns
 
-## MODULE RULES
-
-- Keep requirements testable and evidence-oriented.
-- Keep superseded requirements annotated with context/date.
-- Keep checklist-vs-PRD divergence explicitly called out.
-- Keep archived docs outside active root list when moved.
-- Keep operations runbook content out of this subtree.
-
-## ANTI-DRIFT
-
-- No active-reference use of archived implementation plan.
-- No duplicated status tables across multiple requirement docs.
-- No stale file paths after archive moves.
+- No active references to archived implementation plan.
+- No duplicated status tables across requirement docs.

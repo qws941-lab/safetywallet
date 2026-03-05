@@ -1,50 +1,23 @@
-# AGENTS: PACKAGES/UI
+# UI
 
-## SCOPE DELTA
+Shared React component library and theme primitives for `@safetywallet/ui`.
 
-- Owns package export surface + theme primitives only.
-- Component-level file details live in `src/components/AGENTS.md`.
+## Files
 
-## INVENTORY (CURRENT)
+- `src/index.ts` — public barrel: `cn`, `Button`, `Card*`, `Input`, `Badge`, `Skeleton`, `Avatar*`, `AlertDialog*`, `Dialog*`, `Sheet*`, `Select*`, `Toast*`, `useToast`, `toast`, `Toaster`, `Switch`, `ErrorBoundary`.
+- `src/globals.css` — HSL token system (background/foreground/surface/action/status) with `success` + `warning` custom tokens beyond shadcn defaults.
+- `src/lib/utils.ts` — `cn()` helper (`clsx` + `twMerge`).
+- `src/components/` — 15 component files (see `src/components/AGENTS.md`).
+- `src/__tests__/` — 8 test files (7 test suites + setup).
 
-```text
-src/
-├── index.ts
-├── globals.css
-├── lib/utils.ts
-├── components/ (14 files)
-└── __tests__/ (8 files)
-```
+## Conventions
 
-## COMPONENT SET (14)
-
-- `alert-dialog`, `avatar`, `badge`, `button`, `card`, `dialog`, `input`.
-- `select`, `sheet`, `skeleton`, `switch`, `toast`, `toaster`, `use-toast`.
-
-## PUBLIC BARREL (`src/index.ts`)
-
-- Utility: `cn`.
-- Core: `Button`, `Card*`, `Input`, `Badge`, `Skeleton`, `Avatar*`.
-- Overlay stack: `AlertDialog*`, `Dialog*`, `Sheet*`.
-- Select stack: `Select*` including scroll buttons.
-- Toast stack: `Toast*`, `useToast`, `toast`, `Toaster`.
-- Toggle: `Switch`.
-
-## THEME CONTRACT (`globals.css`)
-
-- HSL token system for background/foreground/surface/action/status colors.
-- Includes `success` + `warning` custom tokens in addition to shadcn defaults.
-- Base layer applies global `border-border` and body background/foreground classes.
-
-## MODULE RULES
-
-- Add/remove component file: update `src/index.ts` same commit.
-- Keep helper composition centralized in `lib/utils.ts` (`clsx` + `twMerge`).
+- Add/remove component file → update `src/index.ts` in same commit.
+- Class merging via `cn()` only; no ad-hoc class concatenation.
 - Token rename/removal requires consuming app migration.
-- Keep component package free of app-specific business strings.
+- Keep components free of app-specific business strings.
 
-## ANTI-DRIFT
+## Anti-patterns
 
-- No undocumented public export.
-- No duplicate `cn` helpers.
-- No stale component/test counts in this file.
+- No undocumented public exports from component files.
+- No duplicate `cn` helpers outside `lib/utils.ts`.

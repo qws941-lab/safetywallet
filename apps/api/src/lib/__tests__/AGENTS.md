@@ -7,7 +7,7 @@ Covers utility contracts, adapter behavior, and envelope stability.
 
 ## FILES/STRUCTURE
 
-- Test files in this directory: 23 (`*.test.ts`).
+- Test files in this directory: 24 (`*.test.ts`).
 - Representative suites:
   - `fas-sync.test.ts` - FAS sync paths, collision scenarios, update/create counts.
   - `notification-queue.test.ts` - queue ack/retry/remove handling.

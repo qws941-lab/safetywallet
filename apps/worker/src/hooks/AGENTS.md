@@ -1,46 +1,47 @@
-# AGENTS: WORKER HOOKS
+# Worker Hooks
 
-## PURPOSE
+Client hook layer for API access, auth/i18n adapters, PWA behaviors.
 
-- Client hook layer for API access, auth/i18n adapters, PWA behaviors.
-- Centralizes React Query usage and cache invalidation rules.
-- Exposes stable hooks to pages/components; hides fetch/store internals.
+## Purpose
 
-## FILES/STRUCTURE
+- Centralize React Query usage and cache invalidation rules
+- Expose stable hooks to pages/components; hide fetch/store internals
+- Domain-specific API hooks with offline support
 
-- Hook modules (14):
-  - `use-actions-api.ts`
-  - `use-api-base.ts`
-  - `use-api.ts` (barrel only)
-  - `use-attendance-api.ts`
-  - `use-auth.ts`
-  - `use-education-api.ts`
-  - `use-install-prompt.ts`
-  - `use-leaderboard.ts`
-  - `use-locale.ts`
-  - `use-posts-api.ts`
-  - `use-push-subscription.ts`
-  - `use-recommendations-api.ts`
-  - `use-system-api.ts`
-  - `use-translation.ts`
-- Tests under `hooks/__tests__/` for core behavior and regressions.
+## Files
 
-## CONVENTIONS
+- `use-actions-api.ts` — corrective action CRUD queries/mutations
+- `use-api-base.ts` — shared query/mutation factories with `apiFetch`
+- `use-api.ts` — barrel re-export (no logic)
+- `use-attendance-api.ts` — attendance check-in with 5-min polling
+- `use-auth.ts` — thin selector facade over `useAuthStore`
+- `use-education-api.ts` — education content + quiz attempt queries
+- `use-install-prompt.ts` — PWA install prompt with dismissal tracking
+- `use-leaderboard.ts` — leaderboard/ranking queries
+- `use-locale.ts` — locale state adapter over `I18nProvider`
+- `use-posts-api.ts` — safety report CRUD with offline queue support
+- `use-push-subscription.ts` — push notification subscription management
+- `use-recommendations-api.ts` — AI recommendation queries
+- `use-system-api.ts` — system announcements/banners
+- `use-translation.ts` — `t()` function adapter over `useI18n`
+- `__tests__/` — hook behavior and regression tests
 
-- `use-api.ts` re-exports domain hooks; no logic in barrel.
-- Query keys are tuple-style and domain-prefixed (`["posts", siteId]`, `["recommendations", ...]`).
-- Mutations invalidate related domain keys explicitly (`actions`, `posts`, `recommendations`, `quiz-attempts`).
-- Offline-safe mutations set `offlineQueue: true` where recovery is supported.
-- `useAttendanceToday` polls every 5 minutes (`staleTime` + `refetchInterval`).
-- `useAuth` is thin selector facade over `useAuthStore`.
-- `useLocale` and `I18nProvider` both persist `i18n-locale`.
-- `usePushSubscription` requires authenticated state before initial subscription check.
-- `useInstallPrompt` stores dismissal timestamp at `safetywallet-install-dismissed`.
+## Conventions
 
-## ANTI-PATTERNS
+- `use-api.ts` re-exports domain hooks; no logic in barrel
+- Query keys are tuple-style, domain-prefixed (`["posts", siteId]`)
+- Mutations invalidate related domain keys explicitly
+- Offline-safe mutations use `offlineQueue: true`
+- `useAttendanceToday` polls every 5 min (`staleTime` + `refetchInterval`)
+- `useAuth` is thin selector over `useAuthStore`
+- `useLocale` and `I18nProvider` both persist `i18n-locale`
+- `usePushSubscription` requires authenticated state before subscription check
+- `useInstallPrompt` stores dismissal at `safetywallet-install-dismissed`
 
-- Do not add API calls directly in pages when an equivalent hook exists.
-- Do not collapse tuple query keys to strings; invalidation precision degrades.
-- Do not remove `enabled` guards on site/ID-dependent hooks.
-- Do not replace `apiFetch` with raw `fetch` in domain API hooks.
-- Do not return untyped `any` from new hook payloads; keep DTO/shape explicit.
+## Anti-Patterns
+
+- Do not add API calls directly in pages when equivalent hook exists
+- Do not collapse tuple query keys to strings; invalidation precision degrades
+- Do not remove `enabled` guards on site/ID-dependent hooks
+- Do not replace `apiFetch` with raw `fetch` in domain API hooks
+- Do not return untyped `any` from hook payloads; keep DTO/shape explicit

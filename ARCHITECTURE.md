@@ -1,79 +1,110 @@
 ## Overview
 
-- SafetyWallet is an industrial safety compliance platform with a field-worker PWA, an admin dashboard, and a Cloudflare Worker API.
-- Production deploys are Git-ref driven via Cloudflare Git Integration; manual deploy scripts are disabled.
+SafetyWallet is an industrial safety compliance platform. Field workers use a mobile PWA to report hazards, log attendance, and earn safety points. Site admins manage reviews, settlements, and compliance via a dashboard. A single Cloudflare Worker serves the API and both static frontends.
 
 ## Tech Stack
 
-- Runtime: Node 20, npm 10 (from `package.json`, `.nvmrc`).
-- Language: TypeScript (strict mode in `packages/types/tsconfig.json`).
-- Monorepo: Turborepo (`turbo.json`).
-- API: Hono + Drizzle ORM on Cloudflare Workers/D1 (`apps/api/package.json`, `wrangler.toml`).
-- Web: Next.js 15 + React 18 for admin/worker apps (`apps/admin/package.json`, `apps/worker/package.json`).
-- Testing: Vitest workspace + Playwright E2E (`vitest.config.ts`, `playwright.config.ts`).
+- Runtime: Node 20, npm 10 (`.nvmrc`, `package.json`).
+- Language: TypeScript strict across all workspaces.
+- Monorepo: Turborepo (`turbo.json`) with npm workspaces.
+- API: Hono + Drizzle ORM on Cloudflare Workers/D1 (`wrangler.toml`).
+- Web: Next.js 15 + React 18 static export for admin and worker apps.
+- Testing: Vitest + Testing Library + happy-dom. No E2E framework.
+- CI: GitHub Actions (`ci.yml`) — lint → typecheck → guards → test → audit → build → d1-migrate → validate → Slack notify.
 
 ## Directory Structure
 
 ```
 .
 ├── apps/
-│   ├── api/                 # Cloudflare Worker API (Hono + D1)
-│   ├── admin/               # Next.js admin dashboard (port 3001)
-│   └── worker/              # Next.js worker PWA (port 3000)
+│   ├── api/                 # Cloudflare Worker API (Hono + Drizzle + D1)
+│   ├── admin/               # Next.js admin dashboard (port 3001, static export)
+│   └── worker/              # Next.js worker PWA (port 3000, static export)
 ├── packages/
-│   ├── types/               # Shared TS types + i18n data
-│   └── ui/                  # Shared UI components
-├── e2e/                     # Playwright E2E tests (api/admin/worker/cross-app)
-├── docs/                    # PRD, requirements checklist, ops runbooks
-├── scripts/                 # Repo tooling (verify, naming lint, checks)
+│   ├── types/               # Shared TS types, enums, DTOs, i18n data (runtime-free)
+│   └── ui/                  # Shared UI components (shadcn/ui + Tailwind v4 theme tokens)
+├── docs/                    # PRD, requirements, ops runbooks
+├── scripts/                 # Repo tooling (verify, naming lint, anti-pattern checks)
 ├── .github/workflows/       # CI/CD and automation workflows
 ├── wrangler.toml            # Root CF Worker config + bindings
 ├── turbo.json               # Turborepo pipeline
 └── vitest.config.ts         # Vitest workspace config
 ```
 
-## Core Components
+## Hosting Model
 
-- API Worker: `apps/api/src/index.ts` (entry), deployed via `wrangler.toml` and `apps/api/wrangler.toml`.
-- Admin App: Next.js App Router at `apps/admin/src/app/`.
-- Worker App: Next.js App Router at `apps/worker/src/app/` with PWA support (`apps/worker/package.json`).
-- Shared Types/I18n: `packages/types/src/` and `packages/types/src/i18n/`.
-- Shared UI: `packages/ui/src/`.
+A single Cloudflare Worker handles all traffic via hostname-based routing:
+
+- `safetywallet.jclee.me/api/*` → Hono API routes.
+- `safetywallet.jclee.me/*` → Worker PWA static assets from R2 (`ASSETS`).
+- `admin.safetywallet.jclee.me/*` → Admin SPA static assets from R2 (`ASSETS` at `/admin/*` prefix).
+- Static frontends are built with `next export` and aggregated into `dist/` via `build:static`.
+
+## Authentication & Authorization
+
+- **Auth flow**: Login → JWT issued with KST same-day midnight expiry → stored in client Zustand.
+- **Triple-layer validation**: JWT decode → KST date check → KV cache lookup → D1 fallback.
+- **Three-tier permissions**: Role-based (`WORKER`, `SITE_ADMIN`, `SUPER_ADMIN`, `SYSTEM`) → site-specific membership → field-level flags (`canAwardPoints`, `canReview`, `canExportData`).
+- **Client auth**: Zustand persisted store + 401 refresh mutex. Worker key: `safetywallet-auth`, admin key: `safetywallet-admin-auth`.
+
+## Cloudflare Bindings
+
+| Binding                                   | Type             | Purpose                                          |
+| ----------------------------------------- | ---------------- | ------------------------------------------------ |
+| `DB`                                      | D1               | Primary database (32 tables, SQLite via Drizzle) |
+| `FAS_HYPERDRIVE`                          | Hyperdrive       | External FAS employee database                   |
+| `ASSETS`                                  | R2               | Static frontend assets (worker + admin SPAs)     |
+| `IMAGES_BUCKET`                           | R2               | User-uploaded images (face blur + phash)         |
+| `ACETIME_BUCKET`                          | R2               | Attendance-related assets                        |
+| `KV`                                      | KV               | Auth cache, system status, config                |
+| `NOTIFICATION_QUEUE` / `NOTIFICATION_DLQ` | Queue            | Notification delivery pipeline                   |
+| `RATE_LIMITER`                            | Durable Object   | Per-IP/user rate limiting                        |
+| `JOB_SCHEDULER`                           | Durable Object   | Scheduled admin tasks                            |
+| `AI`                                      | Workers AI       | Inference (face blur, content analysis)          |
+| `ANALYTICS`                               | Analytics Engine | Request analytics and metrics                    |
+
+## Database Schema
+
+32 tables in 5 domains defined in `apps/api/src/db/schema.ts`:
+
+- **Identity** (7): users, sites, siteMemberships, sessions, userProfiles, userDevices, userNotificationPreferences.
+- **Safety** (8): posts, postImages, actions, reviews, disputes, approvals, recommendations, announcements.
+- **Points/Votes** (6): pointTransactions, pointPolicies, pointSettlements, votes, voteCandidates, voteRecords.
+- **Attendance** (4): attendanceRecords, attendanceSyncErrors, fasEmployeeCache, attendanceSettings.
+- **Education** (8): educationContents, educationQuizzes, educationQuizQuestions, educationQuizAttempts, educationQuizAnswers, educationAssignments, educationProgress, educationCategories.
 
 ## Data Flow
 
-- Client → API: Admin/Worker apps call API endpoints under `https://safetywallet.jclee.me/api` (defaults in `playwright.config.ts`).
-- API → Data Stores:
-  - D1 database via `DB` binding (`wrangler.toml`).
-  - Hyperdrive connection for external FAS DB via `FAS_HYPERDRIVE` (`wrangler.toml`).
-  - R2 buckets for assets/images via `R2`/`ACETIME_BUCKET` (`wrangler.toml`).
-  - KV caching via `KV` (`wrangler.toml`).
-  - Queues for notification delivery (`NOTIFICATION_QUEUE`, DLQ) (`wrangler.toml`).
-- Observability: Analytics Engine + ELK log shipping (`wrangler.toml`, `docs/requirements/ELK_INDEX_PREFIX_REQUIREMENTS.md`).
-- AI: Workers AI binding `AI` for inference (`wrangler.toml`).
-
-## External Integrations
-
-- Cloudflare Workers/D1/R2/KV/Queues/Analytics/AI (`wrangler.toml`).
-- ElasticSearch for log shipping (config in `docs/requirements/ELK_INDEX_PREFIX_REQUIREMENTS.md`).
-- Custom domains and routes (`wrangler.toml`, `docs/cloudflare-operations.md`).
-
-## Configuration
-
-- Environment: `.env`, `.env.example` (root).
-- Cloudflare bindings: `wrangler.toml`, `apps/api/wrangler.toml`.
-- Repo formatting: `.editorconfig`, Prettier scripts in `package.json`.
-- Linting: Next.js ESLint configs in `apps/admin/.eslintrc.json`, `apps/worker/.eslintrc.json`.
-- Testing: `vitest.config.ts`, `playwright.config.ts`.
+- **Client → API**: Both apps call `/api/*` endpoints via `apiFetch` wrapper with auth headers, retry, and 401 refresh.
+- **Worker offline**: IndexedDB queue (`safetywallet_offline_queue`) syncs on reconnect.
+- **API → D1**: Drizzle ORM queries via `DB` binding.
+- **API → FAS**: Hyperdrive connection for external employee sync (`/api/fas/*` routes).
+- **API → R2**: Image upload with Workers AI face blur + perceptual hash dedup.
+- **API → KV**: Auth session cache, system status flags (`fas_down`, `maintenance`).
+- **API → Queue**: Notification delivery via `NOTIFICATION_QUEUE` with DLQ fallback.
+- **Observability**: Analytics Engine for request metrics. GitHub issue auto-creation on unhandled errors.
 
 ## Build & Deploy
 
-- Build: `npm run build` (Turborepo build + static bundle copy to `dist/`).
-- Typecheck: `npm run typecheck` (workspace).
-- Tests: `npm test` (Vitest), `npm run test:e2e` (Playwright).
-- Deploy: Git-ref based CI only; manual deploy scripts exit non-zero (`package.json`, `apps/api/package.json`).
-- Ops runbook: `docs/cloudflare-operations.md`.
+- `npm run build` — Turborepo parallel build (types → ui → api + admin + worker).
+- `npm run build:static` — Builds Next.js apps + copies static output to `dist/` for R2 upload.
+- `npm run typecheck` — Workspace-wide TypeScript check.
+- `npm test` — Vitest across all workspaces.
+- `npm run verify` — 7-step pipeline: typecheck → eslint → vitest → anti-pattern → naming → wrangler-sync → build.
+- Deploy: Git-ref driven via Cloudflare Git Integration. Manual deploy scripts exit non-zero.
+- D1 migrations: Applied on master push in CI (`d1-migrate` step).
 
-## Notes / Inconsistencies
+## Configuration
 
-- Some docs reference `apps/api-worker` while the current repo uses `apps/api` (see `docs/cloudflare-operations.md` vs `apps/api/`).
+- Environment: `.env` (root, gitignored), `.env.example` for reference.
+- Cloudflare: `wrangler.toml` (root bindings) + `apps/api/wrangler.toml` (dev overrides).
+- Formatting: `.editorconfig` + Prettier via lint-staged.
+- Linting: Next.js ESLint in admin/worker, anti-pattern guard in pre-commit hook.
+- Git hooks: `.husky/pre-commit` → lint-staged → `check-anti-patterns.go` + prettier.
+
+## Notes
+
+- `docs/cloudflare-operations.md` references `apps/api-worker` — the current path is `apps/api`.
+- Root `AGENTS.md` is synced from `qws941/.github` — project-specific content belongs here in `ARCHITECTURE.md`.
+- FAS integration env vars (`FAS_DB_NAME`, `FAS_SITE_CD`, `FAS_SITE_NAME`) are in wrangler.toml vars section.
+- i18n is worker-only with custom runtime (not next-intl): ko, en, vi, zh locales.

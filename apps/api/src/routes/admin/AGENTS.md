@@ -7,15 +7,15 @@ Owns moderation, monitoring, export, sync-error triage, policy/settlement contro
 
 ## FILES/STRUCTURE
 
-- Top-level route files in this directory: 16
-  - `access-policies.ts`, `alerting.ts`, `attendance.ts`, `audit.ts`, `distributions.ts`, `export.ts`, `helpers.ts`, `images.ts`, `index.ts`, `monitoring.ts`, `recommendations.ts`, `settlements.ts`, `stats.ts`, `sync-errors.ts`, `trends.ts`, `votes.ts`
+- Top-level route files in this directory: 18
+  - `access-policies.ts`, `alerting.ts`, `attendance.ts`, `audit.ts`, `distributions.ts`, `education.ts`, `export.ts`, `helpers.ts`, `images.ts`, `index.ts`, `issues.ts`, `monitoring.ts`, `recommendations.ts`, `settlements.ts`, `stats.ts`, `sync-errors.ts`, `trends.ts`, `votes.ts`
 - Feature subdirectories: `fas/`, `posts/`, `users/`
-- Tests: `__tests__/` (19 admin test files)
+- Tests: `__tests__/` (20 admin test files)
 
 ## CURRENT FACTS
 
-- `index.ts` applies `authMiddleware` globally, then mounts 17 subrouters.
-- Mounted modules include subdir routers (`users`, `fas`, `posts`) plus the 14 top-level feature routers.
+- `index.ts` applies `authMiddleware` globally, then mounts 18 subrouters.
+- Mounted modules include subdir routers (`users`, `fas`, `posts`) plus the 15 top-level feature routers.
 - `alerting.ts` includes maintenance message endpoints; there is no separate `maintenance.ts` route file.
 - `export.ts` uses export query validators and export-specific guards/rate-limit helpers from admin helper layer.
 

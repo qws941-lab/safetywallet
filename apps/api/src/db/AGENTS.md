@@ -13,13 +13,13 @@ Owns table definitions, relations, enums, and batch-write helpers.
 
 ## CURRENT FACTS
 
-- `schema.ts` currently defines 32 `sqliteTable(...)` tables.
+- `schema.ts` currently defines 33 `sqliteTable(...)` tables.
 - Primary domain groups in file:
   - identity/access: `users`, `sites`, `siteMemberships`, `accessPolicies`, `manualApprovals`, `joinCodeHistory`, `deviceRegistrations`
   - safety lifecycle: `posts`, `postImages`, `reviews`, `actions`, `actionImages`, `disputes`, `auditLogs`, `announcements`
   - points/votes: `pointsLedger`, `pointPolicies`, `votes`, `voteCandidates`, `votePeriods`, `recommendations`
   - attendance/sync: `attendance`, `syncErrors`, `apiMetrics`, `pushSubscriptions`
-  - education: `educationContents`, `quizzes`, `quizQuestions`, `quizAttempts`, `statutoryTrainings`, `tbmRecords`, `tbmAttendees`
+  - education: `educationContents`, `educationCompletions`, `quizzes`, `quizQuestions`, `quizAttempts`, `statutoryTrainings`, `tbmRecords`, `tbmAttendees`
 - `helpers.ts` exposes `dbBatch` and `dbBatchChunked`; chunk limit constant is `D1_BATCH_LIMIT = 100`.
 
 ## CONVENTIONS

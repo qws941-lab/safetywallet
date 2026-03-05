@@ -7,9 +7,10 @@ Scope here is validator definitions only (no route handler logic).
 
 ## FILES/STRUCTURE
 
-- Top-level validator files: 2
+- Top-level validator files: 3
   - `fas-sync.ts`
   - `export.ts`
+  - `query.ts`
 - Shared schema directory: `schemas/`
   - `auth.ts`
   - `domain.ts`

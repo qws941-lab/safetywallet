@@ -17,7 +17,12 @@ app.get("/alerting/config", requireAdmin, async (c: AppContext) => {
 });
 
 app.put("/alerting/config", requireAdmin, async (c: AppContext) => {
-  const body = await c.req.json<Partial<AlertConfig>>();
+  let body: Partial<AlertConfig>;
+  try {
+    body = await c.req.json();
+  } catch {
+    return error(c, "INVALID_JSON", "Invalid JSON body", 400);
+  }
 
   const allowedKeys: Array<keyof AlertConfig> = [
     "webhookUrl",
@@ -78,7 +83,7 @@ app.post("/alerting/test", requireAdmin, async (c: AppContext) => {
   const webhookUrl = config.webhookUrl || c.env.ALERT_WEBHOOK_URL;
 
   if (!webhookUrl) {
-    return error(c, "NO_WEBHOOK_URL", "No webhook URL configured", 500);
+    return error(c, "NO_WEBHOOK_URL", "No webhook URL configured", 503);
   }
 
   const testPayload = {
@@ -97,7 +102,7 @@ app.post("/alerting/test", requireAdmin, async (c: AppContext) => {
       c,
       "WEBHOOK_FAILED",
       "Failed to deliver test alert (check webhook URL)",
-      500,
+      502,
     );
   }
 
@@ -126,11 +131,16 @@ app.get("/maintenance", requireAdmin, async (c: AppContext) => {
 });
 
 app.put("/maintenance", requireAdmin, async (c: AppContext) => {
-  const body = await c.req.json<{
+  let body: {
     message: string;
     severity?: "warning" | "critical" | "info";
     ttlSeconds?: number;
-  }>();
+  };
+  try {
+    body = await c.req.json();
+  } catch {
+    return error(c, "INVALID_JSON", "Invalid JSON body", 400);
+  }
 
   if (!body.message || typeof body.message !== "string") {
     return error(c, "VALIDATION_ERROR", "message is required");

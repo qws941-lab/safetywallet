@@ -72,6 +72,9 @@ export type EducationContentItem = {
   externalId?: string | null;
   sourceUrl?: string | null;
   createdAt: string;
+  viewCount?: number;
+  completionCount?: number;
+  quizCount?: number;
 };
 
 export type QuizItem = {
@@ -83,6 +86,8 @@ export type QuizItem = {
   passingScore: number;
   timeLimitMinutes?: number | null;
   createdAt: string;
+  questionCount?: number;
+  attemptCount?: number;
 };
 
 export type QuizDetail = {
@@ -108,6 +113,7 @@ export type TrainingItem = {
 
 export type TbmRecordItem = {
   leaderName?: string | null;
+  attendeeCount?: number;
   tbm: {
     id: string;
     date: string;

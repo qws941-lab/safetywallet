@@ -158,7 +158,18 @@ app.get("/", async (c) => {
     : eq(quizzes.siteId, siteId);
 
   const list = await db
-    .select()
+    .select({
+      id: quizzes.id,
+      title: quizzes.title,
+      status: quizzes.status,
+      passingScore: quizzes.passingScore,
+      pointsReward: quizzes.pointsReward,
+      createdAt: quizzes.createdAt,
+      contentId: quizzes.contentId,
+      siteId: quizzes.siteId,
+      questionCount: sql<number>`(SELECT COUNT(*) FROM quiz_questions WHERE quiz_id = quizzes.id)`,
+      attemptCount: sql<number>`(SELECT COUNT(*) FROM quiz_attempts WHERE quiz_id = quizzes.id)`,
+    })
     .from(quizzes)
     .where(whereClause)
     .orderBy(desc(quizzes.createdAt))

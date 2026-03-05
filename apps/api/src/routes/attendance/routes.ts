@@ -43,7 +43,7 @@ type AppContext = Context<{
 export async function handleSync(c: AppContext) {
   const auth = c.get("auth");
   if (auth?.user?.role !== "SUPER_ADMIN" && auth?.user?.role !== "SITE_ADMIN") {
-    return c.json(error(c, "FORBIDDEN", "관리자 권한이 필요합니다"), 403);
+    return error(c, "FORBIDDEN", "관리자 권한이 필요합니다", 403);
   }
   const logger = createLogger("attendance");
   const idempotencyKey = c.req.header("Idempotency-Key");
@@ -56,9 +56,14 @@ export async function handleSync(c: AppContext) {
     }
   }
 
-  const validatedBody = (await c.req.json()) as
-    | { events?: AttendanceSyncEvent[] }
-    | undefined;
+  let validatedBody: { events?: AttendanceSyncEvent[] } | undefined;
+  try {
+    validatedBody = (await c.req.json()) as
+      | { events?: AttendanceSyncEvent[] }
+      | undefined;
+  } catch {
+    return error(c, "INVALID_JSON", "Invalid JSON body", 400);
+  }
   const body =
     validatedBody ??
     ((await c.req.raw.clone().json()) as {

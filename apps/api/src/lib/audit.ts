@@ -177,15 +177,24 @@ export async function logAudit(
   ip: string,
   userAgent: string,
 ): Promise<void> {
-  await db.insert(auditLogs).values({
-    actorId,
-    action,
-    targetType,
-    targetId,
-    reason: JSON.stringify(details),
-    ip,
-    userAgent,
-  });
+  try {
+    await db.insert(auditLogs).values({
+      actorId,
+      action,
+      targetType,
+      targetId,
+      reason: JSON.stringify(details),
+      ip,
+      userAgent,
+    });
+  } catch (e) {
+    console.warn("[audit] Failed to write audit log", {
+      action,
+      targetType,
+      targetId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
 }
 
 /**

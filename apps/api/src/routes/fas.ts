@@ -26,7 +26,7 @@ app.post(
       auth?.user?.role !== "SUPER_ADMIN" &&
       auth?.user?.role !== "SITE_ADMIN"
     ) {
-      return c.json(error(c, "FORBIDDEN", "관리자 권한이 필요합니다"), 403);
+      return error(c, "FORBIDDEN", "관리자 권한이 필요합니다", 403);
     }
     const db = drizzle(c.env.DB);
 

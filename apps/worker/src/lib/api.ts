@@ -21,6 +21,19 @@ export interface QueuedRequest {
   retryCount: number;
 }
 
+async function parseJsonResponse<T>(response: Response): Promise<T> {
+  const raw = await response.text();
+  if (!raw) {
+    return null as T;
+  }
+
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    throw new ApiError(response.status, "Invalid response payload");
+  }
+}
+
 const QUEUE_KEY = "safetywallet_offline_queue";
 
 // Migrate legacy key on first access
@@ -158,7 +171,7 @@ export async function apiFetch<T>(
       if (!retryResponse.ok) {
         throw new ApiError(retryResponse.status, await retryResponse.text());
       }
-      return retryResponse.json();
+      return parseJsonResponse<T>(retryResponse);
     } else {
       useAuthStore.getState().logout();
       throw new ApiError(401, "Session expired");
@@ -169,7 +182,7 @@ export async function apiFetch<T>(
     throw new ApiError(response.status, await response.text());
   }
 
-  return response.json();
+  return parseJsonResponse<T>(response);
 }
 
 async function refreshToken(): Promise<boolean> {
@@ -196,7 +209,9 @@ async function doRefresh(): Promise<boolean> {
 
     if (!response.ok) return false;
 
-    const data = await response.json();
+    const data = await parseJsonResponse<{
+      data?: { accessToken?: string; refreshToken?: string };
+    }>(response);
     const accessToken = data?.data?.accessToken;
     const newRefreshToken = data?.data?.refreshToken;
     if (!accessToken || !newRefreshToken) return false;

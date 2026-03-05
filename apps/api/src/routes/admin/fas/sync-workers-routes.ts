@@ -302,13 +302,15 @@ app.post(
       }
     }
 
-    await db.insert(auditLogs).values({
-      action: "FAS_WORKERS_SYNCED",
-      actorId: currentUser.id,
-      targetType: "SITE",
-      targetId: body.siteId,
-      reason: `Synced ${results.created} created, ${results.updated} updated, ${results.membershipCreated} memberships`,
-    });
+    try {
+      await db.insert(auditLogs).values({
+        action: "FAS_WORKERS_SYNCED",
+        actorId: currentUser.id,
+        targetType: "SITE",
+        targetId: body.siteId,
+        reason: `Synced ${results.created} created, ${results.updated} updated, ${results.membershipCreated} memberships`,
+      });
+    } catch {}
 
     return success(c, { results });
   },

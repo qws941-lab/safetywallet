@@ -156,6 +156,11 @@ function ContentsTab({ siteId }: { siteId: string }) {
                   <p className="text-xs text-muted-foreground">
                     {new Date(content.createdAt).toLocaleDateString("ko-KR")}
                   </p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                    <span>조회 {content.viewCount ?? 0}</span>
+                    <span>·</span>
+                    <span>이수 {content.completionCount ?? 0}명</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -219,6 +224,16 @@ function QuizzesTab({ siteId }: { siteId: string }) {
                       {t("education.maxAttempts")} {quiz.maxAttempts}
                       {t("education.attempts")}
                     </span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1">
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>{quiz.questionCount ?? 0}문항</span>
+                </div>
+                {(quiz.attemptCount ?? 0) > 0 && (
+                  <div className="flex items-center gap-1">
+                    <Users className="w-3.5 h-3.5" />
+                    <span>응시 {quiz.attemptCount}회</span>
                   </div>
                 )}
               </div>

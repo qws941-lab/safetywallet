@@ -1,0 +1,1 @@
+ALTER TABLE education_contents ADD COLUMN view_count INTEGER NOT NULL DEFAULT 0;

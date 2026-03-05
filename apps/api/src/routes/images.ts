@@ -323,12 +323,7 @@ app.post("/upload", uploadRateLimit, async (c) => {
 
     timer.end("image_upload_failed", { userId: user.id });
 
-    return error(
-      c,
-      "UPLOAD_FAILED",
-      err instanceof Error ? err.message : "Failed to upload image",
-      500,
-    );
+    return error(c, "UPLOAD_FAILED", "Failed to upload image", 500);
   }
 });
 
@@ -371,12 +366,7 @@ app.get("/info/:filename{.+}", async (c) => {
       metadata: { filename },
     });
 
-    return error(
-      c,
-      "FETCH_FAILED",
-      err instanceof Error ? err.message : "Failed to retrieve image info",
-      500,
-    );
+    return error(c, "FETCH_FAILED", "Failed to retrieve image info", 500);
   }
 });
 

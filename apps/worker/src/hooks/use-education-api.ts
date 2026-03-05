@@ -29,6 +29,8 @@ export function useEducationContents(siteId: string) {
             contentUrl?: string;
             thumbnailUrl?: string;
             description?: string;
+            viewCount?: number;
+            completionCount?: number;
           }>;
         }>
       >(`/education/contents?siteId=${siteId}`).then((r) => r.data.contents),
@@ -74,6 +76,8 @@ export function useQuizzes(siteId: string) {
             maxAttempts: number;
             isActive: boolean;
             createdAt: string;
+            questionCount?: number;
+            attemptCount?: number;
             questions?: Array<{
               id: string;
               question: string;

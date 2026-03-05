@@ -90,13 +90,15 @@ export async function deletePostHandler(c: AppContext) {
     return error(c, "INTERNAL_ERROR", "Post delete failed", 500);
   }
 
-  await db.insert(auditLogs).values({
-    action: "POST_DELETED",
-    actorId: user.id,
-    targetType: "POST",
-    targetId: postId,
-    reason: body.reason,
-  });
+  try {
+    await db.insert(auditLogs).values({
+      action: "POST_DELETED",
+      actorId: user.id,
+      targetType: "POST",
+      targetId: postId,
+      reason: body.reason,
+    });
+  } catch {}
 
   return success(c, { deleted: true, postId });
 }
@@ -186,13 +188,15 @@ export async function emergencyPurgePostHandler(c: AppContext) {
     return error(c, "INTERNAL_ERROR", "Emergency purge failed", 500);
   }
 
-  await db.insert(auditLogs).values({
-    action: "EMERGENCY_DELETE",
-    actorId: user.id,
-    targetType: "POST",
-    targetId: postId,
-    reason: body.reason,
-  });
+  try {
+    await db.insert(auditLogs).values({
+      action: "EMERGENCY_DELETE",
+      actorId: user.id,
+      targetType: "POST",
+      targetId: postId,
+      reason: body.reason,
+    });
+  } catch {}
 
   return success(c, {
     deleted: true,
@@ -261,13 +265,15 @@ export async function emergencyPurgeActionHandler(c: AppContext) {
   await db.delete(actionImages).where(eq(actionImages.actionId, actionId));
   await db.delete(actions).where(eq(actions.id, actionId));
 
-  await db.insert(auditLogs).values({
-    action: "EMERGENCY_DELETE",
-    actorId: user.id,
-    targetType: "ACTION",
-    targetId: actionId,
-    reason: body.reason,
-  });
+  try {
+    await db.insert(auditLogs).values({
+      action: "EMERGENCY_DELETE",
+      actorId: user.id,
+      targetType: "ACTION",
+      targetId: actionId,
+      reason: body.reason,
+    });
+  } catch {}
 
   return success(c, {
     deleted: true,

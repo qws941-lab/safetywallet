@@ -137,7 +137,16 @@ app.get("/", async (c) => {
       );
 
   const contents = await db
-    .select()
+    .select({
+      id: educationContents.id,
+      title: educationContents.title,
+      contentType: educationContents.contentType,
+      isActive: educationContents.isActive,
+      viewCount: educationContents.viewCount,
+      createdAt: educationContents.createdAt,
+      completionCount: sql<number>`(SELECT COUNT(*) FROM education_completions WHERE content_id = education_contents.id)`,
+      quizCount: sql<number>`(SELECT COUNT(*) FROM quizzes WHERE content_id = education_contents.id)`,
+    })
     .from(educationContents)
     .where(whereClause)
     .orderBy(desc(educationContents.createdAt))
@@ -188,6 +197,13 @@ app.get("/:id", async (c) => {
   if (!membership && user.role !== "SUPER_ADMIN") {
     return error(c, "NOT_SITE_MEMBER", "Site membership required", 403);
   }
+
+  // Increment view count
+  await db
+    .update(educationContents)
+    .set({ viewCount: sql`${educationContents.viewCount} + 1` })
+    .where(eq(educationContents.id, id))
+    .run();
 
   return success(c, content);
 });

@@ -55,7 +55,7 @@ app.get("/fas/search-mariadb", requireAdmin, async (c) => {
       results,
     });
   } catch (err) {
-    return error(c, "INTERNAL_ERROR", String(err), 500);
+    return error(c, "INTERNAL_ERROR", "FAS query failed", 500);
   }
 });
 

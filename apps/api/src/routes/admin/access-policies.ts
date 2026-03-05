@@ -43,10 +43,12 @@ app.put("/access-policies/:siteId", requireAdmin, async (c: AppContext) => {
     return error(c, "BAD_REQUEST", "siteId is required", 400);
   }
 
-  const body = await c.req.json<{
-    requireCheckin: boolean;
-    dayCutoffHour?: number;
-  }>();
+  let body: { requireCheckin: boolean; dayCutoffHour?: number };
+  try {
+    body = await c.req.json();
+  } catch {
+    return error(c, "INVALID_JSON", "Invalid JSON body", 400);
+  }
 
   if (typeof body.requireCheckin !== "boolean") {
     return error(c, "INVALID_INPUT", "requireCheckin must be a boolean", 400);

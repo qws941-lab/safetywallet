@@ -149,7 +149,7 @@ api.post("/fas-sync", async (c) => {
   }
 
   if (!c.env.FAS_HYPERDRIVE) {
-    return c.json({ error: "FAS_HYPERDRIVE not available" }, 500);
+    return error(c, "SERVICE_UNAVAILABLE", "FAS_HYPERDRIVE not available", 503);
   }
 
   const batchSize = body.limit ?? 100;
@@ -192,8 +192,7 @@ api.post("/fas-sync", async (c) => {
       nextOffset: hasMore ? offset + batchSize : null,
     });
   } catch (err: unknown) {
-    const e = err as Error;
-    return c.json({ error: e.message }, 500);
+    return error(c, "INTERNAL_ERROR", "FAS sync failed", 500);
   }
 });
 
@@ -351,7 +350,7 @@ app.all("*", async (c) => {
       error: err instanceof Error ? err.message : String(err),
       hostname: url.hostname,
     });
-    return c.json({ error: "Internal Server Error" }, 500);
+    return error(c, "INTERNAL_ERROR", "Internal Server Error", 500);
   }
 });
 

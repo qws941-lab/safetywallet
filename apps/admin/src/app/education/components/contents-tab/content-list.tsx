@@ -96,6 +96,24 @@ export function ContentList({
       ),
     },
     {
+      key: "viewCount",
+      header: "조회수",
+      sortable: true,
+      render: (item) => (
+        <span className="text-muted-foreground">{item.viewCount ?? 0}</span>
+      ),
+    },
+    {
+      key: "completionCount",
+      header: "이수자수",
+      sortable: true,
+      render: (item) => (
+        <span className="text-muted-foreground">
+          {item.completionCount ?? 0}명
+        </span>
+      ),
+    },
+    {
       key: "createdAt",
       header: "등록일",
       sortable: true,

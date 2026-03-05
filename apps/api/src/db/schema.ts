@@ -1168,6 +1168,7 @@ export const educationContents = sqliteTable(
     externalSource: text("external_source").notNull().default("LOCAL"),
     externalId: text("external_id"),
     sourceUrl: text("source_url"),
+    viewCount: integer("view_count").notNull().default(0),
   },
   (table) => ({
     siteIdx: index("education_contents_site_idx").on(table.siteId),

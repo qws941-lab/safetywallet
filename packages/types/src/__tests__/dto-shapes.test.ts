@@ -491,6 +491,8 @@ describe("DTO and envelope shapes", () => {
       contentType: EducationContentType.IMAGE,
       isActive: true,
       quizCount: 2,
+      viewCount: 10,
+      completionCount: 5,
       createdAt: "2026-01-01T00:00:00.000Z",
     } satisfies EducationContentListDto;
     const updateContent = {

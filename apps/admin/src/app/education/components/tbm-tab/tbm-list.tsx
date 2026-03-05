@@ -85,7 +85,7 @@ export function TbmList({
     {
       key: "_attendeeCount",
       header: "참석자수",
-      render: () => <span>-</span>,
+      render: (item) => <span>{item.attendeeCount ?? 0}명</span>,
     },
     {
       key: "tbm.weatherCondition",

@@ -112,13 +112,15 @@ app.post(
       .returning()
       .get();
 
-    await db.insert(auditLogs).values({
-      action: "VOTE_CANDIDATE_ADDED",
-      actorId: currentUser.id,
-      targetType: "VOTE_CANDIDATE",
-      targetId: newCandidate.id,
-      reason: `Added candidate ${body.userId} for ${body.month}`,
-    });
+    try {
+      await db.insert(auditLogs).values({
+        action: "VOTE_CANDIDATE_ADDED",
+        actorId: currentUser.id,
+        targetType: "VOTE_CANDIDATE",
+        targetId: newCandidate.id,
+        reason: `Added candidate ${body.userId} for ${body.month}`,
+      });
+    } catch {}
 
     return success(c, { candidate: newCandidate }, 201);
   },
@@ -228,13 +230,15 @@ app.delete("/votes/candidates/:id", requireAdmin, async (c) => {
 
   await db.delete(voteCandidates).where(eq(voteCandidates.id, id)).run();
 
-  await db.insert(auditLogs).values({
-    action: "VOTE_CANDIDATE_REMOVED",
-    actorId: currentUser.id,
-    targetType: "VOTE_CANDIDATE",
-    targetId: id,
-    reason: `Removed candidate ${existing.userId} from ${existing.month}`,
-  });
+  try {
+    await db.insert(auditLogs).values({
+      action: "VOTE_CANDIDATE_REMOVED",
+      actorId: currentUser.id,
+      targetType: "VOTE_CANDIDATE",
+      targetId: id,
+      reason: `Removed candidate ${existing.userId} from ${existing.month}`,
+    });
+  } catch {}
 
   return success(c, { success: true });
 });
@@ -334,13 +338,15 @@ app.put(
       );
     }
 
-    await db.insert(auditLogs).values({
-      action: "VOTE_PERIOD_UPDATED",
-      actorId: currentUser.id,
-      targetType: "VOTE_PERIOD",
-      targetId: period.id,
-      reason: `Set vote period for ${month}: ${body.startDate} ~ ${body.endDate}`,
-    });
+    try {
+      await db.insert(auditLogs).values({
+        action: "VOTE_PERIOD_UPDATED",
+        actorId: currentUser.id,
+        targetType: "VOTE_PERIOD",
+        targetId: period.id,
+        reason: `Set vote period for ${month}: ${body.startDate} ~ ${body.endDate}`,
+      });
+    } catch {}
 
     return success(c, { period });
   },
@@ -400,13 +406,15 @@ app.patch(
       .set({ autoNominationTopN: body.topN })
       .where(eq(sites.id, body.siteId));
 
-    await db.insert(auditLogs).values({
-      action: "AUTO_NOMINATE_CANDIDATES",
-      actorId: user.id,
-      targetType: "SITE",
-      targetId: body.siteId,
-      reason: `Updated auto-nomination topN to ${body.topN}`,
-    });
+    try {
+      await db.insert(auditLogs).values({
+        action: "AUTO_NOMINATE_CANDIDATES",
+        actorId: user.id,
+        targetType: "SITE",
+        targetId: body.siteId,
+        reason: `Updated auto-nomination topN to ${body.topN}`,
+      });
+    } catch {}
 
     return success(c, { siteId: body.siteId, autoNominationTopN: body.topN });
   },

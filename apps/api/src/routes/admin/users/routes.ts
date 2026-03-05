@@ -44,13 +44,15 @@ router.get("/unlock-user/:phoneHash", requireAdmin, async (c) => {
 
   await c.env.KV.delete(key);
 
-  await db.insert(auditLogs).values({
-    action: "LOGIN_LOCKOUT_RESET",
-    actorId: currentUser.id,
-    targetType: "LOGIN_LOCKOUT",
-    targetId: phoneHash,
-    reason: "Admin unlock",
-  });
+  try {
+    await db.insert(auditLogs).values({
+      action: "LOGIN_LOCKOUT_RESET",
+      actorId: currentUser.id,
+      targetType: "LOGIN_LOCKOUT",
+      targetId: phoneHash,
+      reason: "Admin unlock",
+    });
+  } catch {}
 
   return success(c, { unlocked: true });
 });
@@ -77,13 +79,15 @@ router.post(
 
     await c.env.KV.delete(key);
 
-    await db.insert(auditLogs).values({
-      action: "LOGIN_LOCKOUT_RESET",
-      actorId: currentUser.id,
-      targetType: "LOGIN_LOCKOUT",
-      targetId: phoneHash,
-      reason: "Admin unlock by phone",
-    });
+    try {
+      await db.insert(auditLogs).values({
+        action: "LOGIN_LOCKOUT_RESET",
+        actorId: currentUser.id,
+        targetType: "LOGIN_LOCKOUT",
+        targetId: phoneHash,
+        reason: "Admin unlock by phone",
+      });
+    } catch {}
 
     if (c.env.RATE_LIMITER) {
       const rateLimiterId = c.env.RATE_LIMITER.idFromName(`login:${phoneHash}`);
@@ -248,13 +252,15 @@ router.post("/users/:id/restriction/clear", requireAdmin, async (c) => {
     return error(c, "USER_NOT_FOUND", "User not found", 404);
   }
 
-  await db.insert(auditLogs).values({
-    action: "USER_RESTRICTION_CLEARED",
-    actorId: currentUser.id,
-    targetType: "USER",
-    targetId: userId,
-    reason: "False report restriction cleared",
-  });
+  try {
+    await db.insert(auditLogs).values({
+      action: "USER_RESTRICTION_CLEARED",
+      actorId: currentUser.id,
+      targetType: "USER",
+      targetId: userId,
+      reason: "False report restriction cleared",
+    });
+  } catch {}
 
   return success(c, { user: updated });
 });
@@ -496,13 +502,15 @@ router.post("/users/:id/lock", requireAdmin, async (c) => {
     return error(c, "USER_NOT_FOUND", "User not found", 404);
   }
 
-  await db.insert(auditLogs).values({
-    action: "USER_LOCKED",
-    actorId: currentUser.id,
-    targetType: "USER",
-    targetId: userId,
-    reason: "Admin manual lock",
-  });
+  try {
+    await db.insert(auditLogs).values({
+      action: "USER_LOCKED",
+      actorId: currentUser.id,
+      targetType: "USER",
+      targetId: userId,
+      reason: "Admin manual lock",
+    });
+  } catch {}
 
   return success(c, { userId, locked: true });
 });
@@ -531,13 +539,15 @@ router.post("/users/:id/unlock", requireAdmin, async (c) => {
     return error(c, "USER_NOT_FOUND", "User not found", 404);
   }
 
-  await db.insert(auditLogs).values({
-    action: "USER_UNLOCKED",
-    actorId: currentUser.id,
-    targetType: "USER",
-    targetId: userId,
-    reason: "Admin manual unlock",
-  });
+  try {
+    await db.insert(auditLogs).values({
+      action: "USER_UNLOCKED",
+      actorId: currentUser.id,
+      targetType: "USER",
+      targetId: userId,
+      reason: "Admin manual unlock",
+    });
+  } catch {}
 
   return success(c, { userId, locked: false });
 });

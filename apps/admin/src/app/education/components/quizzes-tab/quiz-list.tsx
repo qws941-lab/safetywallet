@@ -68,6 +68,26 @@ export function QuizList({
         item.timeLimitMinutes ? `${item.timeLimitMinutes}분` : "-",
     },
     {
+      key: "questionCount",
+      header: "문항수",
+      sortable: true,
+      render: (item) => (
+        <span className="text-muted-foreground">
+          {item.questionCount ?? 0}개
+        </span>
+      ),
+    },
+    {
+      key: "attemptCount",
+      header: "응시수",
+      sortable: true,
+      render: (item) => (
+        <span className="text-muted-foreground">
+          {item.attemptCount ?? 0}회
+        </span>
+      ),
+    },
+    {
       key: "createdAt",
       header: "등록일",
       sortable: true,

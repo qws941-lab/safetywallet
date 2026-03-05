@@ -43,6 +43,8 @@ export interface EducationContentListDto {
   contentType: EducationContentType;
   isActive: boolean;
   quizCount: number;
+  viewCount: number;
+  completionCount: number;
   createdAt: string;
 }
 

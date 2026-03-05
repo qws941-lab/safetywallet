@@ -225,13 +225,15 @@ export async function reviewPostHandler(c: AppContext) {
     }
   }
 
-  await db.insert(auditLogs).values({
-    action: "POST_REVIEWED",
-    actorId: reviewer.id,
-    targetType: "POST",
-    targetId: postId,
-    reason: `Action: ${body.action}, Points: ${pointsToAward}`,
-  });
+  try {
+    await db.insert(auditLogs).values({
+      action: "POST_REVIEWED",
+      actorId: reviewer.id,
+      targetType: "POST",
+      targetId: postId,
+      reason: `Action: ${body.action}, Points: ${pointsToAward}`,
+    });
+  } catch {}
 
   return success(c, { review });
 }
@@ -278,13 +280,15 @@ export async function manualApprovalHandler(c: AppContext) {
     .returning()
     .get();
 
-  await db.insert(auditLogs).values({
-    action: "MANUAL_APPROVAL_CREATED",
-    actorId: approver.id,
-    targetType: "MANUAL_APPROVAL",
-    targetId: approval.id,
-    reason: `User: ${body.userId}, Site: ${body.siteId}`,
-  });
+  try {
+    await db.insert(auditLogs).values({
+      action: "MANUAL_APPROVAL_CREATED",
+      actorId: approver.id,
+      targetType: "MANUAL_APPROVAL",
+      targetId: approval.id,
+      reason: `User: ${body.userId}, Site: ${body.siteId}`,
+    });
+  } catch {}
 
   return success(c, { approval }, 201);
 }

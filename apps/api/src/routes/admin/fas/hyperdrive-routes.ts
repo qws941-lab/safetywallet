@@ -68,18 +68,20 @@ app.post("/fas/sync-hyperdrive", requireAdmin, async (c) => {
     const db = drizzle(c.env.DB);
     const runId = crypto.randomUUID();
 
-    await db.insert(auditLogs).values({
-      action: "FAS_HYPERDRIVE_SYNC_TRIGGERED",
-      actorId: currentUser.id,
-      targetType: "FAS_SYNC",
-      targetId: runId,
-      reason: JSON.stringify({
-        offset,
-        limit,
-        accsDay: normalizedAccsDay ?? null,
-        source: source.dbName,
-      }),
-    });
+    try {
+      await db.insert(auditLogs).values({
+        action: "FAS_HYPERDRIVE_SYNC_TRIGGERED",
+        actorId: currentUser.id,
+        targetType: "FAS_SYNC",
+        targetId: runId,
+        reason: JSON.stringify({
+          offset,
+          limit,
+          accsDay: normalizedAccsDay ?? null,
+          source: source.dbName,
+        }),
+      });
+    } catch {}
 
     const { employees, total } = await fasGetAllEmployeesPaginated(
       c.env.FAS_HYPERDRIVE,
@@ -106,29 +108,31 @@ app.post("/fas/sync-hyperdrive", requireAdmin, async (c) => {
     const hasMore = offset + employees.length < total;
     const nextOffset = hasMore ? offset + employees.length : null;
 
-    await db.insert(auditLogs).values({
-      action: "FAS_HYPERDRIVE_SYNC_COMPLETED",
-      actorId: currentUser.id,
-      targetType: "FAS_SYNC",
-      targetId: runId,
-      reason: JSON.stringify({
-        offset,
-        limit,
-        fetched: employees.length,
-        total,
-        active: activeEmployees.length,
-        retired: retiredEmplCds.length,
-        created: syncResult.created,
-        updated: syncResult.updated,
-        skipped: syncResult.skipped,
-        errors: syncResult.errors.length,
-        deactivated,
-        hasMore,
-        nextOffset,
-        accsDay: normalizedAccsDay ?? null,
-        source: source.dbName,
-      }),
-    });
+    try {
+      await db.insert(auditLogs).values({
+        action: "FAS_HYPERDRIVE_SYNC_COMPLETED",
+        actorId: currentUser.id,
+        targetType: "FAS_SYNC",
+        targetId: runId,
+        reason: JSON.stringify({
+          offset,
+          limit,
+          fetched: employees.length,
+          total,
+          active: activeEmployees.length,
+          retired: retiredEmplCds.length,
+          created: syncResult.created,
+          updated: syncResult.updated,
+          skipped: syncResult.skipped,
+          errors: syncResult.errors.length,
+          deactivated,
+          hasMore,
+          nextOffset,
+          accsDay: normalizedAccsDay ?? null,
+          source: source.dbName,
+        }),
+      });
+    } catch {}
 
     return success(c, {
       message: "Hyperdrive sync completed",
@@ -168,7 +172,7 @@ app.post("/fas/sync-hyperdrive", requireAdmin, async (c) => {
         },
       });
     }
-    return error(c, "INTERNAL_ERROR", String(err), 500);
+    return error(c, "INTERNAL_ERROR", "Hyperdrive sync failed", 500);
   }
 });
 

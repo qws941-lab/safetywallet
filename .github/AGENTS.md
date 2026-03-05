@@ -2,39 +2,40 @@
 
 ## SCOPE DELTA
 
-- Top-level GitHub automation config only.
-- Workflow-specific details live in `.github/workflows/AGENTS.md`.
+- Own top-level GitHub metadata/config files only.
+- Workflow-level inventory and coupling live in `.github/workflows/AGENTS.md`.
 
 ## TOP-LEVEL INVENTORY (CURRENT)
 
+- `CODEOWNERS`
 - `dependabot.yml`
 - `labeler.yml`
 - `release-drafter.yml`
 - `FUNDING.yml`
+- `PULL_REQUEST_TEMPLATE.md`
 - `ISSUE_TEMPLATE/` (4 templates: `bug_report.yml`, `feature_request.yml`, `task.yml`, `config.yml`)
-- `workflows/` (16 workflow files + local AGENTS)
+- `workflows/` (22 workflow files + local AGENTS)
 
 ## CONFIG SNAPSHOT
 
 - `dependabot.yml`
   - ecosystems: `npm`, `github-actions`
-  - cadence: weekly Monday
-  - reviewer: `jclee-v1`
-  - grouped minor/patch npm updates
+  - cadence: weekly
+  - grouped patch/minor updates
 - `labeler.yml`
-  - path-based labels for docs/ci/terraform/docker/python/typescript/shell/config
+  - path-based labels (docs/ci/terraform/docker/python/typescript/shell/config)
 - `release-drafter.yml`
-  - release note category policy (workflow consumer)
+  - release category mapping and changelog policy
 
 ## MODULE RULES
 
-- Keep bot configs secret-free and path-driven.
-- Keep template and label mappings aligned with active repo structure.
-- Keep workflow file references delegated to `workflows/AGENTS.md`.
-- Any workflow add/remove requires updates in workflow AGENTS.
+- Keep metadata/config secret-free and path-driven.
+- Keep top-level inventory synchronized with actual file tree.
+- Keep workflow details delegated to `.github/workflows/AGENTS.md`.
+- On workflow add/remove, update both workflow AGENTS and top-level counts.
 
 ## ANTI-DRIFT
 
-- No stale workflow counts at top-level.
-- No duplicate repo-root policy prose.
+- No stale template/workflow counts.
+- No duplication of repo-root conventions already covered in root `AGENTS.md`.
 - No runtime artifacts committed under `.github/`.

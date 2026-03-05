@@ -2,45 +2,50 @@
 
 ## SCOPE DELTA
 
-- Workflow-file inventory + coupling notes only.
-- Parent `.github/AGENTS.md` owns top-level config scope.
+- Own workflow inventory, trigger/coupling notes, and workflow-specific drift guards.
+- Parent `.github/AGENTS.md` owns top-level `.github` config inventory.
 
-## WORKFLOW INVENTORY (17)
+## WORKFLOW INVENTORY (22)
 
-- `auto-merge-dependabot.yml` - `Auto-merge Dependabot`
-- `auto-merge.yml` - `Auto Merge`
-- `ci.yml` - `CI`
-- `codex-auto-issue.yml` - `Codex Auto-Issue`
-- `codex-triage.yml` - `Codex Auto-Label`
-- `codex-approve-runs.yml` - `Codex Approve Runs`
-- `commitlint.yml` - `Commitlint`
-- `deploy-monitoring.yml` - `Deployment Monitoring`
-- `e2e-auto-issue.yml` - `E2E Failure Issue`
-- `e2e-nightly.yml` - `E2E Nightly`
-- `labeler.yml` - `Auto-label PRs`
-- `lock-threads.yml` - `Lock Threads`
-- `pr-size.yml` - `PR Size`
-- `release-drafter.yml` - `Release Drafter`
-- `ssl-fix.yml` - `SSL Diagnostic & Fix`
-- `stale.yml` - `Stale issue/PR cleanup`
-- `welcome.yml` - `Welcome`
+- `auto-approve-runs.yml` - Auto-approve gated runs
+- `auto-merge.yml` - Auto-merge orchestration
+- `branch-cleanup.yml` - Branch cleanup on PR close
+- `ci-notify-failure.yml` - CI failure notification fan-out
+- `ci.yml` - Primary monorepo CI gate
+- `codex-approve-runs.yml` - Codex run approval workflow
+- `codex-auto-issue.yml` - Codex issue invocation on label
+- `codex-issue-timeout.yml` - Codex issue timeout handling
+- `codex-pr-normalize.yml` - Codex PR normalization
+- `codex-pr-review.yml` - Codex PR review trigger
+- `codex-triage.yml` - Codex issue triage
+- `commitlint.yml` - Conventional commit/PR title checks
+- `dependabot-auto-fix.yml` - Dependabot to Codex automation
+- `deploy-monitoring.yml` - Post-CI deployment health + incident lifecycle
+- `issue-lifecycle.yml` - Issue lifecycle automation
+- `labeler.yml` - Path-based PR labeling
+- `lock-threads.yml` - Auto-lock closed threads
+- `pr-size.yml` - PR size labeling
+- `release-drafter.yml` - Release notes drafting
+- `ssl-fix.yml` - Manual SSL diagnosis/remediation helper
+- `stale.yml` - Stale issue/PR cleanup
+- `welcome.yml` - First-time contributor welcome
 
 ## FLOW LINKS
 
-- Production deploy uses Cloudflare Git integration (push to `master`).
-- `ci.yml` is the primary monorepo verify gate.
-- `deploy-monitoring.yml` runs post-CI endpoint health + incident upsert/close.
-- Nightly and auto-issue workflows capture E2E failure automation.
+- `ci.yml` is the primary verify pipeline for lint/typecheck/test/build/guards.
+- `ci-notify-failure.yml` and `deploy-monitoring.yml` are downstream `workflow_run` consumers of CI results.
+- `codex-*` workflows coordinate issue triage, PR review, and timeout/normalization automation.
+- Deploy remains Git-ref driven; no direct manual deploy workflow is the source of truth.
 
 ## MODULE RULES
 
-- SHA-pin all action `uses:` entries (no mutable tags).
-- Keep workflow `name:` values stable when referenced by automation.
-- Keep monitoring/incident workflow path intact.
-- Keep local manual deploy logic out of workflows.
+- SHA-pin all action `uses:` entries; avoid mutable tags.
+- Keep workflow `name:` values stable when downstream automation depends on them.
+- Preserve `workflow_run` coupling between CI, notifications, and monitoring.
+- Keep workflow behavior repository-accurate (remove stale references quickly).
 
 ## ANTI-DRIFT
 
-- No stale workflow names/counts.
-- No references to removed deploy workflows.
-- No unpinned action tags introduced.
+- No stale workflow names/counts in inventory.
+- No references to removed workflows.
+- No mutable action tags or unscoped token permissions.

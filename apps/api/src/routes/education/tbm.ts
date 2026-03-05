@@ -148,25 +148,26 @@ app.get("/", async (c) => {
       )
     : eq(tbmRecords.siteId, siteId);
 
-  const records = await db
-    .select({
-      tbm: tbmRecords,
-      leaderName: users.name,
-      attendeeCount: sql<number>`(SELECT COUNT(*) FROM ${tbmAttendees} WHERE ${tbmAttendees.tbmRecordId} = ${tbmRecords.id})`,
-    })
-    .from(tbmRecords)
-    .innerJoin(users, eq(tbmRecords.leaderId, users.id))
-    .where(whereClause)
-    .orderBy(desc(tbmRecords.createdAt))
-    .limit(limit)
-    .offset(offset)
-    .all();
-
-  const countResult = await db
-    .select({ count: sql<number>`COUNT(*)` })
-    .from(tbmRecords)
-    .where(whereClause)
-    .get();
+  const [records, countResult] = await Promise.all([
+    db
+      .select({
+        tbm: tbmRecords,
+        leaderName: users.name,
+        attendeeCount: sql<number>`(SELECT COUNT(*) FROM ${tbmAttendees} WHERE ${tbmAttendees.tbmRecordId} = ${tbmRecords.id})`,
+      })
+      .from(tbmRecords)
+      .innerJoin(users, eq(tbmRecords.leaderId, users.id))
+      .where(whereClause)
+      .orderBy(desc(tbmRecords.createdAt))
+      .limit(limit)
+      .offset(offset)
+      .all(),
+    db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(tbmRecords)
+      .where(whereClause)
+      .get(),
+  ]);
 
   return success(c, {
     records,

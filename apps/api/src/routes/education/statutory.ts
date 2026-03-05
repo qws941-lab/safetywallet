@@ -198,24 +198,25 @@ app.get("/", async (c) => {
     );
   }
 
-  const trainings = await db
-    .select({
-      training: statutoryTrainings,
-      userName: users.name,
-    })
-    .from(statutoryTrainings)
-    .innerJoin(users, eq(statutoryTrainings.userId, users.id))
-    .where(and(...conditions))
-    .orderBy(desc(statutoryTrainings.createdAt))
-    .limit(limit)
-    .offset(offset)
-    .all();
-
-  const countResult = await db
-    .select({ count: sql<number>`COUNT(*)` })
-    .from(statutoryTrainings)
-    .where(and(...conditions))
-    .get();
+  const [trainings, countResult] = await Promise.all([
+    db
+      .select({
+        training: statutoryTrainings,
+        userName: users.name,
+      })
+      .from(statutoryTrainings)
+      .innerJoin(users, eq(statutoryTrainings.userId, users.id))
+      .where(and(...conditions))
+      .orderBy(desc(statutoryTrainings.createdAt))
+      .limit(limit)
+      .offset(offset)
+      .all(),
+    db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(statutoryTrainings)
+      .where(and(...conditions))
+      .get(),
+  ]);
 
   return success(c, {
     trainings,

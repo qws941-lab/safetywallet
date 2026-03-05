@@ -136,29 +136,30 @@ app.get("/", async (c) => {
         eq(educationContents.isActive, true),
       );
 
-  const contents = await db
-    .select({
-      id: educationContents.id,
-      title: educationContents.title,
-      contentType: educationContents.contentType,
-      isActive: educationContents.isActive,
-      viewCount: educationContents.viewCount,
-      createdAt: educationContents.createdAt,
-      completionCount: sql<number>`(SELECT COUNT(*) FROM education_completions WHERE content_id = education_contents.id)`,
-      quizCount: sql<number>`(SELECT COUNT(*) FROM quizzes WHERE content_id = education_contents.id)`,
-    })
-    .from(educationContents)
-    .where(whereClause)
-    .orderBy(desc(educationContents.createdAt))
-    .limit(limit)
-    .offset(offset)
-    .all();
-
-  const countResult = await db
-    .select({ count: sql<number>`COUNT(*)` })
-    .from(educationContents)
-    .where(whereClause)
-    .get();
+  const [contents, countResult] = await Promise.all([
+    db
+      .select({
+        id: educationContents.id,
+        title: educationContents.title,
+        contentType: educationContents.contentType,
+        isActive: educationContents.isActive,
+        viewCount: educationContents.viewCount,
+        createdAt: educationContents.createdAt,
+        completionCount: sql<number>`(SELECT COUNT(*) FROM education_completions WHERE content_id = education_contents.id)`,
+        quizCount: sql<number>`(SELECT COUNT(*) FROM quizzes WHERE content_id = education_contents.id)`,
+      })
+      .from(educationContents)
+      .where(whereClause)
+      .orderBy(desc(educationContents.createdAt))
+      .limit(limit)
+      .offset(offset)
+      .all(),
+    db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(educationContents)
+      .where(whereClause)
+      .get(),
+  ]);
 
   return success(c, {
     contents,
@@ -198,12 +199,14 @@ app.get("/:id", async (c) => {
     return error(c, "NOT_SITE_MEMBER", "Site membership required", 403);
   }
 
-  // Increment view count
-  await db
-    .update(educationContents)
-    .set({ viewCount: sql`${educationContents.viewCount} + 1` })
-    .where(eq(educationContents.id, id))
-    .run();
+  // Increment view count (fire-and-forget, don't block response)
+  c.executionCtx.waitUntil(
+    db
+      .update(educationContents)
+      .set({ viewCount: sql`${educationContents.viewCount} + 1` })
+      .where(eq(educationContents.id, id))
+      .run(),
+  );
 
   return success(c, content);
 });

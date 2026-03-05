@@ -179,6 +179,45 @@ export default function HomePage() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">
+                {t("home.announcements")}
+              </CardTitle>
+              <Link href="/announcements" className="text-sm text-primary">
+                {t("home.viewAll")}
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {recentAnnouncements.length > 0 ? (
+              <div>
+                {recentAnnouncements.map((item) => (
+                  <div key={item.id} className="flex items-start gap-3 py-2">
+                    <Bell className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className={`text-sm truncate ${item.isPinned ? "font-medium" : ""}`}
+                      >
+                        {item.isPinned && "📌 "}
+                        {item.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(item.createdAt).toLocaleDateString("ko-KR")}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground py-4">
+                {t("home.noAnnouncements")}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">
                 {t("home.recentReports")}
               </CardTitle>
               <Link href="/posts" className="text-sm text-primary">

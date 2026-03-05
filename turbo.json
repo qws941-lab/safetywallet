@@ -25,6 +25,10 @@
       "outputs": ["coverage/**"],
       "env": ["NODE_ENV"]
     },
+    "test:e2e": {
+      "cache": false,
+      "persistent": false
+    },
     "clean": {
       "cache": false
     }

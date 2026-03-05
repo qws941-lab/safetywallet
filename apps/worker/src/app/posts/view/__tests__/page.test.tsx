@@ -75,7 +75,6 @@ describe("app/posts/view/page", () => {
       isLoading: false,
       error: null,
     } as never);
-
     render(<PostViewPage />);
     fireEvent.click(
       screen.getByRole("button", { name: "posts.view.resubmitButton" }),

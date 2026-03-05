@@ -271,12 +271,44 @@ const MIME_TYPES: Record<string, string> = {
   ".woff2": "font/woff2",
   ".ttf": "font/ttf",
   ".webp": "image/webp",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".mov": "video/quicktime",
 };
 
 const getMimeType = (path: string): string => {
   const ext = path.substring(path.lastIndexOf("."));
   return MIME_TYPES[ext] || "application/octet-stream";
 };
+
+// R2 image/video serving — public, no auth required
+app.get("/r2/*", async (c) => {
+  const key = c.req.path.replace(/^\/r2\//, "");
+  if (!key) {
+    return error(c, "NOT_FOUND", "Missing R2 key", 404);
+  }
+
+  const object = await c.env.R2.get(key);
+  if (!object) {
+    return error(c, "NOT_FOUND", "File not found", 404);
+  }
+
+  const headers = new Headers();
+  headers.set(
+    "Content-Type",
+    object.httpMetadata?.contentType || getMimeType(key),
+  );
+  headers.set("Cache-Control", "public, max-age=31536000, immutable");
+  headers.set("ETag", object.httpEtag);
+
+  // Support conditional requests (304 Not Modified)
+  const ifNoneMatch = c.req.header("If-None-Match");
+  if (ifNoneMatch && ifNoneMatch === object.httpEtag) {
+    return new Response(null, { status: 304, headers });
+  }
+
+  return new Response(object.body, { status: 200, headers });
+});
 
 // Static SPA serving — hostname-based routing:
 //   admin.safetywallet.jclee.me → serves /admin/index.html on 404

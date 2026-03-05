@@ -215,6 +215,7 @@ describe("DTO and envelope shapes", () => {
     const postImage = {
       id: "img1",
       fileUrl: "https://example.com/file.jpg",
+      mediaType: "image",
       thumbnailUrl: null,
     } satisfies PostImageDto;
     const post = {

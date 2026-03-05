@@ -50,6 +50,7 @@ export interface PostDto {
 export interface PostImageDto {
   id: string;
   fileUrl: string;
+  mediaType: string;
   thumbnailUrl: string | null;
 }
 

@@ -77,7 +77,7 @@ export const registerMediaRoutes = (app: PostsRouteApp): void => {
       .insert(postImages)
       .values({
         postId,
-        fileUrl: key,
+        fileUrl: `/r2/${key}`,
         mediaType: isVideo ? "video" : "image",
       })
       .returning()

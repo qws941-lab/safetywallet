@@ -294,17 +294,31 @@ function PostDetailContent() {
           <Card>
             <CardContent className="p-0">
               <div className="grid grid-cols-2 gap-1">
-                {post.images.map((img, idx) => (
-                  <Image
-                    key={img.id || idx}
-                    src={img.fileUrl}
-                    alt={`${t("posts.view.photo")} ${idx + 1}`}
-                    width={512}
-                    height={256}
-                    className="w-full h-32 object-cover rounded"
-                    unoptimized
-                  />
-                ))}
+                {post.images.map((img, idx) => {
+                  const src = img.fileUrl.startsWith("/r2/")
+                    ? img.fileUrl
+                    : `/r2/${img.fileUrl}`;
+                  const isVideo = img.mediaType === "video";
+                  return isVideo ? (
+                    <video
+                      key={img.id || idx}
+                      src={src}
+                      controls
+                      playsInline
+                      className="w-full rounded col-span-2"
+                    />
+                  ) : (
+                    <Image
+                      key={img.id || idx}
+                      src={src}
+                      alt={`${t("posts.view.photo")} ${idx + 1}`}
+                      width={512}
+                      height={256}
+                      className="w-full h-32 object-cover rounded"
+                      unoptimized
+                    />
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

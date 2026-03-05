@@ -70,7 +70,7 @@ export function I18nProvider({
 
   return (
     <I18nContext.Provider value={{ locale, setLocale, messages, isLoading }}>
-      {children}
+      {isLoading ? null : children}
     </I18nContext.Provider>
   );
 }

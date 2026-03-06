@@ -5,28 +5,28 @@ describe("common utilities", () => {
   // ---------- maskName ----------
 
   describe("maskName", () => {
-    it("masks single character name to *", () => {
-      expect(maskName("김")).toBe("*");
+    it("returns single character name unchanged", () => {
+      expect(maskName("김")).toBe("김");
     });
 
-    it("masks two character name: first + *", () => {
-      expect(maskName("김철")).toBe("김*");
+    it("returns two character name unchanged", () => {
+      expect(maskName("김철")).toBe("김철");
     });
 
-    it("masks three character Korean name: first + * + last", () => {
-      expect(maskName("김철수")).toBe("김*수");
+    it("returns three character Korean name unchanged", () => {
+      expect(maskName("김철수")).toBe("김철수");
     });
 
-    it("masks four character name: first + ** + last", () => {
-      expect(maskName("김영철수")).toBe("김**수");
+    it("returns four character name unchanged", () => {
+      expect(maskName("김영철수")).toBe("김영철수");
     });
 
-    it("masks long English name correctly", () => {
-      expect(maskName("Johnson")).toBe("J*****n");
+    it("returns long English name unchanged", () => {
+      expect(maskName("Johnson")).toBe("Johnson");
     });
 
     it("handles empty string gracefully", () => {
-      expect(maskName("")).toBe("*");
+      expect(maskName("")).toBe("");
     });
   });
 

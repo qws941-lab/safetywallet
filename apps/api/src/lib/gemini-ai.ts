@@ -1061,6 +1061,107 @@ export interface ActionImageAnalysisResult {
   modelVersion: string;
 }
 
+const OVERALL_IMPROVEMENTS = [
+  "SIGNIFICANT",
+  "MODERATE",
+  "MINIMAL",
+  "NONE",
+  "WORSENED",
+] as const;
+
+const SAFETY_RATINGS = ["EXCELLENT", "GOOD", "FAIR", "POOR"] as const;
+
+export interface BeforeAfterComparisonResult {
+  overallImprovement:
+    | "SIGNIFICANT"
+    | "MODERATE"
+    | "MINIMAL"
+    | "NONE"
+    | "WORSENED";
+  improvementScore: number;
+  beforeCondition: string;
+  afterCondition: string;
+  changesIdentified: string[];
+  remainingIssues: string[];
+  complianceImprovement: boolean;
+  safetyRating: "EXCELLENT" | "GOOD" | "FAIR" | "POOR";
+  recommendation: string;
+  confidence: number;
+  modelVersion: string;
+}
+
+function isValidBeforeAfterComparisonShape(
+  value: unknown,
+): value is Omit<BeforeAfterComparisonResult, "modelVersion"> {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.overallImprovement === "string" &&
+    OVERALL_IMPROVEMENTS.includes(
+      v.overallImprovement as (typeof OVERALL_IMPROVEMENTS)[number],
+    ) &&
+    typeof v.improvementScore === "number" &&
+    v.improvementScore >= 0 &&
+    v.improvementScore <= 100 &&
+    typeof v.beforeCondition === "string" &&
+    typeof v.afterCondition === "string" &&
+    isStringArray(v.changesIdentified) &&
+    isStringArray(v.remainingIssues) &&
+    typeof v.complianceImprovement === "boolean" &&
+    typeof v.safetyRating === "string" &&
+    SAFETY_RATINGS.includes(
+      v.safetyRating as (typeof SAFETY_RATINGS)[number],
+    ) &&
+    typeof v.recommendation === "string" &&
+    typeof v.confidence === "number" &&
+    v.confidence >= 0 &&
+    v.confidence <= 100
+  );
+}
+
+const BEFORE_AFTER_COMPARISON_RESPONSE_SCHEMA = {
+  type: "OBJECT" as const,
+  properties: {
+    overallImprovement: {
+      type: "STRING" as const,
+      enum: [...OVERALL_IMPROVEMENTS],
+    },
+    improvementScore: { type: "INTEGER" as const },
+    beforeCondition: { type: "STRING" as const },
+    afterCondition: { type: "STRING" as const },
+    changesIdentified: {
+      type: "ARRAY" as const,
+      items: { type: "STRING" as const },
+    },
+    remainingIssues: {
+      type: "ARRAY" as const,
+      items: { type: "STRING" as const },
+    },
+    complianceImprovement: { type: "BOOLEAN" as const },
+    safetyRating: {
+      type: "STRING" as const,
+      enum: [...SAFETY_RATINGS],
+    },
+    recommendation: { type: "STRING" as const },
+    confidence: { type: "INTEGER" as const },
+  },
+  required: [
+    "overallImprovement",
+    "improvementScore",
+    "beforeCondition",
+    "afterCondition",
+    "changesIdentified",
+    "remainingIssues",
+    "complianceImprovement",
+    "safetyRating",
+    "recommendation",
+    "confidence",
+  ],
+};
+
 function isValidActionImageAnalysisShape(
   value: unknown,
 ): value is Omit<ActionImageAnalysisResult, "modelVersion"> {
@@ -1194,6 +1295,118 @@ export async function analyzeActionImage(
     logger.error("Gemini action image analysis failed", {
       error: {
         name: "GeminiActionImageAnalysisError",
+        message: err instanceof Error ? err.message : String(err),
+      },
+    });
+    return null;
+  }
+}
+
+export async function compareBeforeAfterImages(
+  credentials: GcpCredentials,
+  beforeImageData: string,
+  afterImageData: string,
+  mimeType: string,
+  actionContext?: string,
+): Promise<BeforeAfterComparisonResult | null> {
+  try {
+    if (!beforeImageData || !afterImageData || !mimeType) {
+      return null;
+    }
+
+    const contextText = actionContext
+      ? `\n\n조치 맥락(Action Context): ${actionContext}`
+      : "";
+
+    const prompt = `당신은 산업안전보건 전문가입니다. 두 장의 이미지를 비교 분석하세요.
+
+첫 번째 이미지는 BEFORE(개선 전)이고, 두 번째 이미지는 AFTER(개선 후)입니다.
+교정/시정 조치의 효과를 평가하고, 안전 수준 개선 여부를 판단해야 합니다.${contextText}
+
+반드시 다음 필드로 JSON만 반환하세요 (영문 필드명 유지):
+1) overallImprovement: SIGNIFICANT | MODERATE | MINIMAL | NONE | WORSENED
+2) improvementScore: 0-100 정수
+3) beforeCondition: 개선 전 상태 설명 (한국어)
+4) afterCondition: 개선 후 상태 설명 (한국어)
+5) changesIdentified: 전후 비교로 확인된 구체적 변화 목록 (한국어 배열)
+6) remainingIssues: 여전히 남아있는 안전 이슈 목록 (한국어 배열, 없으면 빈 배열)
+7) complianceImprovement: 법규/안전수칙 준수 수준이 개선되었는지 여부 (boolean)
+8) safetyRating: EXCELLENT | GOOD | FAIR | POOR
+9) recommendation: 추가 권고사항 (한국어)
+10) confidence: 0-100 정수
+
+요구사항:
+- BEFORE와 AFTER의 차이를 시각적으로 비교하여 판단하세요.
+- 시정조치의 실효성을 객관적으로 평가하세요.
+- 모든 텍스트 필드 값은 한국어로 작성하세요.
+- 출력은 스키마에 정확히 맞는 유효한 JSON이어야 합니다.
+
+You are comparing BEFORE and AFTER safety images. Return strict JSON only.`;
+
+    const response = await fetch(getVertexEndpoint(credentials, GEMINI_MODEL), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${await getVertexAccessToken(credentials)}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: prompt },
+              {
+                inline_data: {
+                  mime_type: mimeType,
+                  data: beforeImageData,
+                },
+              },
+              {
+                inline_data: {
+                  mime_type: mimeType,
+                  data: afterImageData,
+                },
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: BEFORE_AFTER_COMPARISON_RESPONSE_SCHEMA,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      logger.error("Gemini before/after comparison failed", {
+        error: {
+          name: "GeminiApiError",
+          message: `Gemini API returned status ${response.status}`,
+        },
+      });
+      return null;
+    }
+
+    const payload = (await response.json()) as GeminiApiResponse;
+    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!text) {
+      return null;
+    }
+
+    const parsed: unknown = JSON.parse(text);
+    if (!isValidBeforeAfterComparisonShape(parsed)) {
+      return null;
+    }
+
+    return {
+      ...parsed,
+      modelVersion: GEMINI_MODEL,
+    };
+  } catch (err) {
+    logger.error("Gemini before/after comparison failed", {
+      error: {
+        name: "GeminiBeforeAfterComparisonError",
         message: err instanceof Error ? err.message : String(err),
       },
     });

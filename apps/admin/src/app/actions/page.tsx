@@ -17,6 +17,7 @@ import { DataTable, type Column } from "@/components/data-table";
 import { useActionItems } from "@/hooks/use-api";
 import { useActionImages } from "@/hooks/use-action-ai-analysis";
 import { ActionImageAiAnalysis } from "./components/action-image-ai-analysis";
+import { BeforeAfterComparisonCard } from "./components/before-after-comparison-card";
 import {
   AlertTriangle,
   Bot,
@@ -345,6 +346,7 @@ export default function ActionsPage() {
             </p>
           ) : (
             <div className="space-y-4">
+              <BeforeAfterComparisonCard actionId={selectedActionForAi} />
               {selectedActionImages.map((image) => (
                 <ActionImageAiAnalysis
                   key={image.id}

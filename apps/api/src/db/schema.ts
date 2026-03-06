@@ -423,6 +423,8 @@ export const actions = sqliteTable(
     actionStatus: text("action_status", { enum: actionStatusEnum })
       .default("NONE")
       .notNull(),
+    aiComparison: text("ai_comparison"),
+    aiComparedAt: text("ai_compared_at"),
     completionNote: text("completion_note"),
     completedAt: integer("completed_at", { mode: "timestamp" }),
     createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(

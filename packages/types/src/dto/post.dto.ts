@@ -115,6 +115,30 @@ export interface ActionImageAiAnalysisDto {
   aiAnalyzedAt: string | null;
 }
 
+export interface BeforeAfterComparisonResult {
+  overallImprovement:
+    | "SIGNIFICANT"
+    | "MODERATE"
+    | "MINIMAL"
+    | "NONE"
+    | "WORSENED";
+  improvementScore: number;
+  beforeCondition: string;
+  afterCondition: string;
+  changesIdentified: string[];
+  remainingIssues: string[];
+  complianceImprovement: boolean;
+  safetyRating: "EXCELLENT" | "GOOD" | "FAIR" | "POOR";
+  recommendation: string;
+  confidence: number;
+  modelVersion: string;
+}
+
+export interface BeforeAfterComparisonDto {
+  comparison: BeforeAfterComparisonResult | null;
+  comparedAt: string | null;
+}
+
 export interface PostClassificationResult {
   suggestedCategory: string;
   suggestedHazardType: string | null;

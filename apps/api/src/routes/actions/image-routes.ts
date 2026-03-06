@@ -1,15 +1,40 @@
 import { Hono } from "hono";
 import { drizzle } from "drizzle-orm/d1";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import type { Env, AuthContext } from "../../types";
 import { success, error } from "../../lib/response";
 import { actions, actionImages, posts, siteMemberships } from "../../db/schema";
-import { analyzeActionImage, getGcpCredentials } from "../../lib/gemini-ai";
+import {
+  analyzeActionImage,
+  compareBeforeAfterImages,
+  getGcpCredentials,
+} from "../../lib/gemini-ai";
 
 const app = new Hono<{
   Bindings: Env;
   Variables: { auth: AuthContext };
 }>();
+
+function extractR2Key(fileUrl: string): string {
+  if (!fileUrl) {
+    return "";
+  }
+
+  return fileUrl
+    .replace(/^.*\/files\//, "")
+    .replace(/^.*\/r2\//, "")
+    .replace(/^\/?r2\//, "");
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
 
 app.post("/:id/images", async (c) => {
   const db = drizzle(c.env.DB);
@@ -95,6 +120,22 @@ app.post("/:id/images", async (c) => {
     .returning()
     .get();
 
+  const shouldAutoCompare = imageType === "AFTER";
+  const beforeImageForComparison = shouldAutoCompare
+    ? await db
+        .select()
+        .from(actionImages)
+        .where(
+          and(
+            eq(actionImages.actionId, actionId),
+            eq(actionImages.imageType, "BEFORE"),
+          ),
+        )
+        .orderBy(desc(actionImages.createdAt))
+        .limit(1)
+        .get()
+    : null;
+
   const gcpCreds = getGcpCredentials(c.env);
   if (gcpCreds && file) {
     const mimeType = file.type || "image/jpeg";
@@ -128,7 +169,239 @@ app.post("/:id/images", async (c) => {
     );
   }
 
+  if (gcpCreds && shouldAutoCompare && beforeImageForComparison) {
+    c.executionCtx.waitUntil(
+      (async () => {
+        try {
+          const beforeKey = extractR2Key(beforeImageForComparison.fileUrl);
+          const afterKey = extractR2Key(inserted.fileUrl);
+          if (!beforeKey || !afterKey) {
+            return;
+          }
+
+          const [beforeObject, afterObject] = await Promise.all([
+            c.env.R2.get(beforeKey),
+            c.env.R2.get(afterKey),
+          ]);
+
+          if (!beforeObject || !afterObject) {
+            return;
+          }
+
+          const [beforeBuffer, afterBuffer] = await Promise.all([
+            beforeObject.arrayBuffer(),
+            afterObject.arrayBuffer(),
+          ]);
+
+          const beforeBase64 = arrayBufferToBase64(beforeBuffer);
+          const afterBase64 = arrayBufferToBase64(afterBuffer);
+          const mimeType =
+            afterObject.httpMetadata?.contentType ||
+            beforeObject.httpMetadata?.contentType ||
+            "image/jpeg";
+
+          const comparison = await compareBeforeAfterImages(
+            gcpCreds,
+            beforeBase64,
+            afterBase64,
+            mimeType,
+            action.description ?? undefined,
+          );
+
+          if (!comparison) {
+            return;
+          }
+
+          await db
+            .update(actions)
+            .set({
+              aiComparison: JSON.stringify(comparison),
+              aiComparedAt: new Date().toISOString(),
+            })
+            .where(eq(actions.id, actionId));
+        } catch (e) {
+          console.error(
+            "Action before/after comparison auto-trigger failed:",
+            e,
+          );
+        }
+      })(),
+    );
+  }
+
   return success(c, { image: inserted }, 201);
+});
+
+app.post("/:id/compare-images", async (c) => {
+  const { user } = c.get("auth");
+  if (user.role !== "SUPER_ADMIN" && user.role !== "SITE_ADMIN") {
+    return error(c, "FORBIDDEN", "Admin access required", 403);
+  }
+
+  const db = drizzle(c.env.DB);
+  const actionId = c.req.param("id");
+
+  const credentials = getGcpCredentials(c.env);
+  if (!credentials) {
+    return error(c, "AI_NOT_CONFIGURED", "AI service not configured", 503);
+  }
+
+  const action = await db
+    .select()
+    .from(actions)
+    .where(eq(actions.id, actionId))
+    .get();
+  if (!action) {
+    return error(c, "ACTION_NOT_FOUND", "Action not found", 404);
+  }
+
+  const beforeImage = await db
+    .select()
+    .from(actionImages)
+    .where(
+      and(
+        eq(actionImages.actionId, actionId),
+        eq(actionImages.imageType, "BEFORE"),
+      ),
+    )
+    .orderBy(desc(actionImages.createdAt))
+    .limit(1)
+    .get();
+
+  const afterImage = await db
+    .select()
+    .from(actionImages)
+    .where(
+      and(
+        eq(actionImages.actionId, actionId),
+        eq(actionImages.imageType, "AFTER"),
+      ),
+    )
+    .orderBy(desc(actionImages.createdAt))
+    .limit(1)
+    .get();
+
+  if (!beforeImage || !afterImage) {
+    return error(
+      c,
+      "MISSING_BEFORE_AFTER_IMAGES",
+      "BEFORE와 AFTER 이미지가 모두 필요합니다",
+      400,
+    );
+  }
+
+  const beforeKey = extractR2Key(beforeImage.fileUrl);
+  const afterKey = extractR2Key(afterImage.fileUrl);
+  if (!beforeKey || !afterKey) {
+    return error(
+      c,
+      "INVALID_IMAGE_KEY",
+      "유효하지 않은 이미지 경로입니다",
+      400,
+    );
+  }
+
+  const [beforeObject, afterObject] = await Promise.all([
+    c.env.R2.get(beforeKey),
+    c.env.R2.get(afterKey),
+  ]);
+
+  if (!beforeObject || !afterObject) {
+    return error(c, "IMAGE_FILE_NOT_FOUND", "Image file not found", 404);
+  }
+
+  const [beforeBuffer, afterBuffer] = await Promise.all([
+    beforeObject.arrayBuffer(),
+    afterObject.arrayBuffer(),
+  ]);
+
+  const comparison = await compareBeforeAfterImages(
+    credentials,
+    arrayBufferToBase64(beforeBuffer),
+    arrayBufferToBase64(afterBuffer),
+    afterObject.httpMetadata?.contentType ||
+      beforeObject.httpMetadata?.contentType ||
+      "image/jpeg",
+    action.description ?? undefined,
+  );
+
+  if (!comparison) {
+    return error(c, "AI_COMPARISON_FAILED", "AI 비교 분석에 실패했습니다", 500);
+  }
+
+  const comparedAt = new Date().toISOString();
+  await db
+    .update(actions)
+    .set({
+      aiComparison: JSON.stringify(comparison),
+      aiComparedAt: comparedAt,
+    })
+    .where(eq(actions.id, actionId));
+
+  return success(c, { comparison, comparedAt });
+});
+
+app.get("/:id/comparison", async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user } = c.get("auth");
+  const actionId = c.req.param("id");
+
+  const action = await db
+    .select()
+    .from(actions)
+    .where(eq(actions.id, actionId))
+    .get();
+
+  if (!action) {
+    return error(c, "ACTION_NOT_FOUND", "Action not found", 404);
+  }
+
+  const post = await db
+    .select()
+    .from(posts)
+    .where(eq(posts.id, action.postId))
+    .get();
+
+  if (!post) {
+    return error(c, "POST_NOT_FOUND", "Associated post not found", 404);
+  }
+
+  const isAssignee = action.assigneeId === user.id;
+  const isAdmin = user.role === "SUPER_ADMIN" || user.role === "SITE_ADMIN";
+
+  if (!isAssignee && !isAdmin) {
+    const membership = await db
+      .select()
+      .from(siteMemberships)
+      .where(
+        and(
+          eq(siteMemberships.userId, user.id),
+          eq(siteMemberships.siteId, post.siteId),
+          eq(siteMemberships.status, "ACTIVE"),
+        ),
+      )
+      .get();
+
+    if (!membership || membership.role === "WORKER") {
+      return error(c, "UNAUTHORIZED", "Not authorized", 403);
+    }
+  }
+
+  if (!action.aiComparison) {
+    return success(c, { comparison: null, comparedAt: null });
+  }
+
+  try {
+    return success(c, {
+      comparison: JSON.parse(action.aiComparison),
+      comparedAt: action.aiComparedAt ?? null,
+    });
+  } catch {
+    return success(c, {
+      comparison: null,
+      comparedAt: action.aiComparedAt ?? null,
+    });
+  }
 });
 
 app.post("/:id/images/:imageId/analyze", async (c) => {

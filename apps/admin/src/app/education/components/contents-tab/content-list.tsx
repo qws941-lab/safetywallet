@@ -22,6 +22,7 @@ import {
 } from "@safetywallet/ui";
 import { useDeleteEducationContent } from "@/hooks/use-api";
 import { useEducationCompletions } from "@/hooks/use-education-completions";
+import { useGenerateQuizFromContent } from "@/hooks/use-quiz-generation";
 import { DataTable, type Column } from "@/components/data-table";
 import { getContentTypeLabel, getErrorMessage } from "../../education-helpers";
 import type { EducationContentItem } from "../education-types";
@@ -48,9 +49,23 @@ export function ContentList({
     ? contents.find((c) => c.id === aiContentId)
     : null;
   const deleteMutation = useDeleteEducationContent();
+  const generateQuizMutation = useGenerateQuizFromContent();
+  const quizGenerating = generateQuizMutation.isPending;
   const { data: completionsData, isLoading: completionsLoading } =
     useEducationCompletions(selectedContent?.id);
   const { toast } = useToast();
+
+  const handleGenerateQuiz = async (contentId: string) => {
+    try {
+      const result = await generateQuizMutation.mutateAsync(contentId);
+      toast({
+        description: `"${result.title}" 퀴즈가 ${result.questions.length}개 문항으로 생성되었습니다.`,
+      });
+    } catch (err) {
+      toast({ variant: "destructive", description: getErrorMessage(err) });
+    }
+  };
+
   const handleDeleteContent = async () => {
     if (!deleteContentId) return;
     try {
@@ -168,6 +183,26 @@ export function ContentList({
           >
             <Bot className="h-3.5 w-3.5" />
             AI 분석
+          </Button>
+        ) : null,
+    },
+    {
+      key: "_quiz",
+      header: "퀴즈",
+      render: (item) =>
+        item.contentType !== "VIDEO" ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs"
+            disabled={quizGenerating}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleGenerateQuiz(item.id);
+            }}
+          >
+            <Bot className="h-3.5 w-3.5" />
+            퀴즈 생성
           </Button>
         ) : null,
     },

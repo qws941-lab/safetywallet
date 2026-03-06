@@ -313,3 +313,21 @@ export interface TbmAiAnalysisDto {
   analysis: TbmAiAnalysisResult | null;
   analyzedAt: string | null;
 }
+
+export interface QuizGenerationQuestionDto {
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  explanation: string;
+  questionType: "SINGLE_CHOICE" | "OX";
+}
+
+export interface QuizGenerationDto {
+  quizTitle: string;
+  questions: QuizGenerationQuestionDto[];
+}
+
+export interface AnnouncementDraftDto {
+  title: string;
+  content: string;
+}

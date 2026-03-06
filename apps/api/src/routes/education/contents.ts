@@ -4,10 +4,18 @@ import { drizzle } from "drizzle-orm/d1";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { z } from "zod";
 import { CreateCourseSchema } from "../../validators/schemas";
-import { educationContents, siteMemberships } from "../../db/schema";
+import {
+  educationContents,
+  siteMemberships,
+  quizzes,
+  quizQuestions,
+} from "../../db/schema";
 import { success, error } from "../../lib/response";
 import { logAuditWithContext } from "../../lib/audit";
-import { analyzeEducationContent } from "../../lib/gemini-ai";
+import {
+  analyzeEducationContent,
+  generateQuizFromContent,
+} from "../../lib/gemini-ai";
 import type { AppType, CreateContentBody } from "./helpers";
 
 const app = new Hono<AppType>();
@@ -549,6 +557,96 @@ app.get("/:id/ai-analysis", async (c) => {
     analysis: JSON.parse(content.aiAnalysis),
     analyzedAt: content.aiAnalyzedAt,
   });
+});
+
+app.post("/:id/generate-quiz", async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user } = c.get("auth");
+  const id = c.req.param("id");
+
+  const content = await db
+    .select()
+    .from(educationContents)
+    .where(eq(educationContents.id, id))
+    .get();
+
+  if (!content) {
+    return error(c, "NOT_FOUND", "Content not found", 404);
+  }
+
+  const adminMembership = await db
+    .select()
+    .from(siteMemberships)
+    .where(
+      and(
+        eq(siteMemberships.userId, user.id),
+        eq(siteMemberships.siteId, content.siteId),
+        eq(siteMemberships.status, "ACTIVE"),
+        eq(siteMemberships.role, "SITE_ADMIN"),
+      ),
+    )
+    .get();
+  if (!adminMembership && user.role !== "SUPER_ADMIN") {
+    return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
+  }
+
+  if (!content.aiAnalysis) {
+    return error(
+      c,
+      "NO_AI_ANALYSIS",
+      "AI 분석이 없습니다. 먼저 AI 분석을 실행하세요.",
+      400,
+    );
+  }
+
+  const apiKey = c.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return error(c, "AI_UNAVAILABLE", "AI not configured", 503);
+  }
+
+  const result = await generateQuizFromContent(apiKey, {
+    contentTitle: content.title,
+    contentAnalysis: content.aiAnalysis,
+  });
+
+  if (!result) {
+    return error(c, "AI_FAILED", "퀴즈 생성에 실패했습니다", 500);
+  }
+
+  const quiz = await db
+    .insert(quizzes)
+    .values({
+      siteId: content.siteId,
+      contentId: content.id,
+      title: result.quizTitle,
+      status: "DRAFT",
+      pointsReward: 0,
+      createdById: user.id,
+    })
+    .returning()
+    .get();
+
+  for (let i = 0; i < result.questions.length; i += 1) {
+    const q = result.questions[i];
+    await db.insert(quizQuestions).values({
+      quizId: quiz.id,
+      question: q.question,
+      options: q.options,
+      correctAnswer: q.correctAnswer,
+      explanation: q.explanation,
+      orderIndex: i,
+      questionType: q.questionType,
+    });
+  }
+
+  const questions = await db
+    .select()
+    .from(quizQuestions)
+    .where(eq(quizQuestions.quizId, quiz.id))
+    .orderBy(quizQuestions.orderIndex)
+    .all();
+
+  return success(c, { ...quiz, questions }, 201);
 });
 
 export default app;

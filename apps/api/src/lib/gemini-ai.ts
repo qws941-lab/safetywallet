@@ -645,3 +645,444 @@ Output must be valid JSON and match the schema exactly.`;
     return null;
   }
 }
+
+const QUIZ_QUESTION_TYPES = ["SINGLE_CHOICE", "OX"] as const;
+
+export interface QuizGenerationResult {
+  quizTitle: string;
+  questions: Array<{
+    question: string;
+    options: string[];
+    correctAnswer: number;
+    explanation: string;
+    questionType: string;
+  }>;
+  modelVersion: string;
+}
+
+function isValidQuizGenerationShape(
+  value: unknown,
+): value is Omit<QuizGenerationResult, "modelVersion"> {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  if (
+    typeof candidate.quizTitle !== "string" ||
+    !Array.isArray(candidate.questions)
+  ) {
+    return false;
+  }
+
+  return candidate.questions.every((question) => {
+    if (typeof question !== "object" || question === null) {
+      return false;
+    }
+
+    const q = question as Record<string, unknown>;
+    if (
+      typeof q.question !== "string" ||
+      !isStringArray(q.options) ||
+      typeof q.correctAnswer !== "number" ||
+      !Number.isInteger(q.correctAnswer) ||
+      typeof q.explanation !== "string" ||
+      typeof q.questionType !== "string" ||
+      !QUIZ_QUESTION_TYPES.includes(
+        q.questionType as (typeof QUIZ_QUESTION_TYPES)[number],
+      )
+    ) {
+      return false;
+    }
+
+    const expectedOptionCount = q.questionType === "OX" ? 2 : 4;
+    return (
+      q.options.length === expectedOptionCount &&
+      q.correctAnswer >= 0 &&
+      q.correctAnswer < q.options.length
+    );
+  });
+}
+
+const QUIZ_GENERATION_RESPONSE_SCHEMA = {
+  type: "OBJECT" as const,
+  properties: {
+    quizTitle: { type: "STRING" as const },
+    questions: {
+      type: "ARRAY" as const,
+      items: {
+        type: "OBJECT" as const,
+        properties: {
+          question: { type: "STRING" as const },
+          options: {
+            type: "ARRAY" as const,
+            items: { type: "STRING" as const },
+          },
+          correctAnswer: { type: "INTEGER" as const },
+          explanation: { type: "STRING" as const },
+          questionType: {
+            type: "STRING" as const,
+            enum: [...QUIZ_QUESTION_TYPES],
+          },
+        },
+        required: [
+          "question",
+          "options",
+          "correctAnswer",
+          "explanation",
+          "questionType",
+        ],
+      },
+    },
+  },
+  required: ["quizTitle", "questions"],
+};
+
+export async function generateQuizFromContent(
+  apiKey: string,
+  options: {
+    contentTitle: string;
+    contentAnalysis: string;
+  },
+): Promise<QuizGenerationResult | null> {
+  try {
+    if (!apiKey || !options.contentTitle || !options.contentAnalysis) {
+      return null;
+    }
+
+    const prompt = `당신은 산업안전보건 교육 퀴즈 전문가입니다. 교육 콘텐츠 분석 결과를 바탕으로 학습 효과를 측정할 수 있는 퀴즈를 생성하세요.
+
+Generate 5 quiz questions based on the education content analysis.
+Requirements:
+1) quizTitle: Korean quiz title derived from content
+2) questions: array of 5 questions
+   - question: Korean question text
+   - options: 4 Korean answer choices (for SINGLE_CHOICE) or 2 choices ["O (맞다)", "X (틀리다)"] (for OX)
+   - correctAnswer: 0-based index of correct option
+   - explanation: Korean explanation of why the answer is correct
+   - questionType: "SINGLE_CHOICE" or "OX"
+3) Mix question types: at least 3 SINGLE_CHOICE and up to 2 OX questions
+
+Output must be valid JSON and match the schema exactly.`;
+
+    const response = await fetch(GEMINI_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "x-goog-api-key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: `${prompt}\n\n교육 콘텐츠 제목: ${options.contentTitle}\n\n교육 콘텐츠 분석 결과(JSON):\n${options.contentAnalysis}`,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: QUIZ_GENERATION_RESPONSE_SCHEMA,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      logger.error("Gemini quiz generation failed", {
+        error: {
+          name: "GeminiApiError",
+          message: `Gemini API returned status ${response.status}`,
+        },
+      });
+      return null;
+    }
+
+    const payload = (await response.json()) as GeminiApiResponse;
+    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!text) {
+      return null;
+    }
+
+    const parsed: unknown = JSON.parse(text);
+    if (!isValidQuizGenerationShape(parsed)) {
+      return null;
+    }
+
+    return {
+      ...parsed,
+      modelVersion: GEMINI_MODEL,
+    };
+  } catch (err) {
+    logger.error("Gemini quiz generation failed", {
+      error: {
+        name: "GeminiQuizGenerationError",
+        message: err instanceof Error ? err.message : String(err),
+      },
+    });
+    return null;
+  }
+}
+
+export interface ActionImageAnalysisResult {
+  complianceStatus: string;
+  ppeDetected: string[];
+  ppeMissing: string[];
+  safetyObservations: string[];
+  improvementAreas: string[];
+  beforeAfterComparison: string | null;
+  overallAssessment: string;
+  confidence: number;
+  modelVersion: string;
+}
+
+function isValidActionImageAnalysisShape(
+  value: unknown,
+): value is Omit<ActionImageAnalysisResult, "modelVersion"> {
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.complianceStatus === "string" &&
+    isStringArray(v.ppeDetected) &&
+    isStringArray(v.ppeMissing) &&
+    isStringArray(v.safetyObservations) &&
+    isStringArray(v.improvementAreas) &&
+    (v.beforeAfterComparison === null ||
+      typeof v.beforeAfterComparison === "string") &&
+    typeof v.overallAssessment === "string" &&
+    typeof v.confidence === "number" &&
+    v.confidence >= 0 &&
+    v.confidence <= 100
+  );
+}
+
+const ACTION_IMAGE_RESPONSE_SCHEMA = {
+  type: "OBJECT" as const,
+  properties: {
+    complianceStatus: {
+      type: "STRING" as const,
+      enum: ["compliant", "non_compliant", "partial", "not_applicable"],
+    },
+    ppeDetected: { type: "ARRAY" as const, items: { type: "STRING" as const } },
+    ppeMissing: { type: "ARRAY" as const, items: { type: "STRING" as const } },
+    safetyObservations: {
+      type: "ARRAY" as const,
+      items: { type: "STRING" as const },
+    },
+    improvementAreas: {
+      type: "ARRAY" as const,
+      items: { type: "STRING" as const },
+    },
+    beforeAfterComparison: { type: "STRING" as const, nullable: true },
+    overallAssessment: { type: "STRING" as const },
+    confidence: { type: "INTEGER" as const },
+  },
+  required: [
+    "complianceStatus",
+    "ppeDetected",
+    "ppeMissing",
+    "safetyObservations",
+    "improvementAreas",
+    "overallAssessment",
+    "confidence",
+  ],
+};
+
+export async function analyzeActionImage(
+  apiKey: string,
+  imageData: string,
+  mimeType: string,
+): Promise<ActionImageAnalysisResult | null> {
+  try {
+    if (!apiKey || !mimeType || !imageData) {
+      return null;
+    }
+
+    const prompt = `당신은 산업안전보건 전문가입니다. 이 조치(시정/개선) 사진을 분석하여 다음을 평가하세요:
+
+1. complianceStatus: 안전 기준 준수 상태 (compliant/non_compliant/partial/not_applicable)
+2. ppeDetected: 감지된 개인보호구(PPE) 목록 (예: 안전모, 안전화, 보호장갑 등)
+3. ppeMissing: 미착용 또는 누락된 PPE 목록
+4. safetyObservations: 안전 관련 관찰 사항 (최대 5개)
+5. improvementAreas: 개선이 필요한 영역 (최대 3개)
+6. beforeAfterComparison: 개선 전후 비교 설명 (해당되는 경우)
+7. overallAssessment: 전반적인 안전 상태 평가 (2-3문장)
+8. confidence: 분석 신뢰도 (0-100)
+
+모든 응답은 한국어로 작성하세요.`;
+
+    const response = await fetch(GEMINI_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "x-goog-api-key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: prompt },
+              {
+                inline_data: {
+                  mime_type: mimeType,
+                  data: imageData,
+                },
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: ACTION_IMAGE_RESPONSE_SCHEMA,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      logger.error("Gemini action image analysis failed", {
+        error: {
+          name: "GeminiApiError",
+          message: `Gemini API returned status ${response.status}`,
+        },
+      });
+      return null;
+    }
+
+    const payload = (await response.json()) as GeminiApiResponse;
+    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!text) {
+      return null;
+    }
+
+    const parsed: unknown = JSON.parse(text);
+    if (!isValidActionImageAnalysisShape(parsed)) {
+      return null;
+    }
+
+    return {
+      ...parsed,
+      modelVersion: GEMINI_MODEL,
+    };
+  } catch (err) {
+    logger.error("Gemini action image analysis failed", {
+      error: {
+        name: "GeminiActionImageAnalysisError",
+        message: err instanceof Error ? err.message : String(err),
+      },
+    });
+    return null;
+  }
+}
+
+export interface AnnouncementDraftResult {
+  title: string;
+  content: string;
+  modelVersion: string;
+}
+
+function isValidAnnouncementDraftShape(
+  value: unknown,
+): value is Omit<AnnouncementDraftResult, "modelVersion"> {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const v = value as Record<string, unknown>;
+  return typeof v.title === "string" && typeof v.content === "string";
+}
+
+const ANNOUNCEMENT_DRAFT_RESPONSE_SCHEMA = {
+  type: "OBJECT" as const,
+  properties: {
+    title: { type: "STRING" as const },
+    content: { type: "STRING" as const },
+  },
+  required: ["title", "content"],
+};
+
+export async function generateAnnouncementDraft(
+  apiKey: string,
+  keywords: string,
+): Promise<AnnouncementDraftResult | null> {
+  try {
+    if (!apiKey || !keywords) {
+      return null;
+    }
+
+    const prompt = `당신은 산업안전보건 공지사항 작성 전문가입니다. 주어진 키워드를 바탕으로 안전 관련 공지사항 초안을 작성하세요.
+
+키워드: ${keywords}
+
+Requirements:
+1. title: 간결하고 명확한 공지사항 제목 (한국어)
+2. content: HTML 형식의 공지사항 본문 (한국어)
+   - <h3> 태그로 섹션 제목
+   - <p> 태그로 본문 단락
+   - <ul><li> 태그로 목록
+   - <strong> 태그로 강조
+   - 전문적이고 공식적인 어조
+   - 구체적인 안전 지침 포함
+   - 관련 법규나 규정 언급 (해당되는 경우)
+   - 문의처 안내 포함
+
+공지사항은 현장 근로자가 이해하기 쉽게 작성하세요.`;
+
+    const response = await fetch(GEMINI_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "x-goog-api-key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: ANNOUNCEMENT_DRAFT_RESPONSE_SCHEMA,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      logger.error("Gemini announcement draft generation failed", {
+        error: {
+          name: "GeminiApiError",
+          message: `Gemini API returned status ${response.status}`,
+        },
+      });
+      return null;
+    }
+
+    const payload = (await response.json()) as GeminiApiResponse;
+    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!text) {
+      return null;
+    }
+
+    const parsed: unknown = JSON.parse(text);
+    if (!isValidAnnouncementDraftShape(parsed)) {
+      return null;
+    }
+
+    return {
+      ...parsed,
+      modelVersion: GEMINI_MODEL,
+    };
+  } catch (err) {
+    logger.error("Gemini announcement draft generation failed", {
+      error: {
+        name: "GeminiAnnouncementDraftGenerationError",
+        message: err instanceof Error ? err.message : String(err),
+      },
+    });
+    return null;
+  }
+}

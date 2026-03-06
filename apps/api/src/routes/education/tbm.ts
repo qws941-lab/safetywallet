@@ -15,7 +15,11 @@ import {
 } from "../../db/schema";
 import { success, error } from "../../lib/response";
 import { logAuditWithContext } from "../../lib/audit";
-import { analyzeTbmRecord, getGcpCredentials } from "../../lib/gemini-ai";
+import {
+  analyzeTbmRecord,
+  generateTbmMeetingMinutes,
+  getGcpCredentials,
+} from "../../lib/gemini-ai";
 import type { AppType, CreateTbmBody } from "./helpers";
 
 const app = new Hono<AppType>();
@@ -129,6 +133,30 @@ app.post("/", zValidator("json", CreateTbmInputSchema), async (c) => {
               .where(eq(tbmRecords.id, tbm.id));
           }
         } catch {}
+      })(),
+    );
+
+    c.executionCtx.waitUntil(
+      (async () => {
+        try {
+          const result = await generateTbmMeetingMinutes(gcpCreds, {
+            topic: tbm.topic,
+            content: tbm.content,
+            weatherCondition: tbm.weatherCondition,
+            specialNotes: tbm.specialNotes,
+          });
+          if (result) {
+            await db
+              .update(tbmRecords)
+              .set({
+                aiMeetingMinutes: JSON.stringify(result),
+                aiMinutesGeneratedAt: new Date().toISOString(),
+              })
+              .where(eq(tbmRecords.id, tbm.id));
+          }
+        } catch (e) {
+          console.error("TBM meeting minutes generation failed:", e);
+        }
       })(),
     );
   }
@@ -568,6 +596,112 @@ app.get("/:id/ai-analysis", async (c) => {
   return success(c, {
     analysis: tbm.aiAnalysis ? JSON.parse(tbm.aiAnalysis) : null,
     analyzedAt: tbm.aiAnalyzedAt ?? null,
+  });
+});
+
+app.post("/:id/generate-minutes", async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user } = c.get("auth");
+  const id = c.req.param("id");
+
+  const gcpCreds = getGcpCredentials(c.env);
+  if (!gcpCreds) {
+    return error(c, "AI_NOT_CONFIGURED", "AI 분석이 설정되지 않았습니다", 503);
+  }
+
+  const tbm = await db
+    .select({
+      record: tbmRecords,
+      leaderName: users.name,
+      attendeeCount: sql<number>`(SELECT COUNT(*) FROM ${tbmAttendees} WHERE ${tbmAttendees.tbmRecordId} = ${tbmRecords.id})`,
+    })
+    .from(tbmRecords)
+    .innerJoin(users, eq(tbmRecords.leaderId, users.id))
+    .where(eq(tbmRecords.id, id))
+    .get();
+
+  if (!tbm) {
+    return error(c, "TBM_NOT_FOUND", "TBM record not found", 404);
+  }
+
+  const adminMembership = await db
+    .select()
+    .from(siteMemberships)
+    .where(
+      and(
+        eq(siteMemberships.userId, user.id),
+        eq(siteMemberships.siteId, tbm.record.siteId),
+        eq(siteMemberships.status, "ACTIVE"),
+        eq(siteMemberships.role, "SITE_ADMIN"),
+      ),
+    )
+    .get();
+  if (!adminMembership && user.role !== "SUPER_ADMIN") {
+    return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
+  }
+
+  const result = await generateTbmMeetingMinutes(gcpCreds, {
+    topic: tbm.record.topic,
+    content: tbm.record.content,
+    weatherCondition: tbm.record.weatherCondition,
+    specialNotes: tbm.record.specialNotes,
+    leaderName: tbm.leaderName,
+    attendeeCount: tbm.attendeeCount,
+    date: new Date(tbm.record.date * 1000).toLocaleString("ko-KR"),
+  });
+
+  if (!result) {
+    return error(c, "AI_MINUTES_FAILED", "AI 회의록 생성에 실패했습니다", 500);
+  }
+
+  const generatedAt = new Date().toISOString();
+  await db
+    .update(tbmRecords)
+    .set({
+      aiMeetingMinutes: JSON.stringify(result),
+      aiMinutesGeneratedAt: generatedAt,
+    })
+    .where(eq(tbmRecords.id, id));
+
+  return success(c, {
+    success: true,
+    minutes: result,
+  });
+});
+
+app.get("/:id/meeting-minutes", async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user } = c.get("auth");
+  const id = c.req.param("id");
+
+  const tbm = await db
+    .select()
+    .from(tbmRecords)
+    .where(eq(tbmRecords.id, id))
+    .get();
+
+  if (!tbm) {
+    return error(c, "TBM_NOT_FOUND", "TBM record not found", 404);
+  }
+
+  const membership = await db
+    .select()
+    .from(siteMemberships)
+    .where(
+      and(
+        eq(siteMemberships.userId, user.id),
+        eq(siteMemberships.siteId, tbm.siteId),
+        eq(siteMemberships.status, "ACTIVE"),
+      ),
+    )
+    .get();
+  if (!membership && user.role !== "SUPER_ADMIN") {
+    return error(c, "NOT_SITE_MEMBER", "Site membership required", 403);
+  }
+
+  return success(c, {
+    minutes: tbm.aiMeetingMinutes ? JSON.parse(tbm.aiMeetingMinutes) : null,
+    generatedAt: tbm.aiMinutesGeneratedAt ?? null,
   });
 });
 

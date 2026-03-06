@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Bot, Pencil, Trash2 } from "lucide-react";
+import { Bot, FileText, Pencil, Trash2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +24,7 @@ import { DataTable, type Column } from "@/components/data-table";
 import { getErrorMessage, formatUnixDate } from "../../education-helpers";
 import type { TbmRecordItem, TbmDetail } from "../education-types";
 import { TbmAiAnalysis } from "./tbm-ai-analysis";
+import { TbmMeetingMinutes } from "./tbm-meeting-minutes";
 
 interface Props {
   tbmRecords: TbmRecordItem[];
@@ -46,7 +47,12 @@ export function TbmList({
   const [expandedTbmId, setExpandedTbmId] = useState<string | null>(null);
   const [deleteTbmId, setDeleteTbmId] = useState<string | null>(null);
   const [aiTbmId, setAiTbmId] = useState<string | null>(null);
+  const [minutesTbmId, setMinutesTbmId] = useState<string | null>(null);
+
   const aiTbm = aiTbmId ? tbmRecords.find((r) => r.tbm.id === aiTbmId) : null;
+  const minutesTbm = minutesTbmId
+    ? tbmRecords.find((r) => r.tbm.id === minutesTbmId)
+    : null;
 
   const { data: tbmDetail } = useTbmRecord(expandedTbmId || "");
   const typedTbmDetail: TbmDetail | undefined = tbmDetail;
@@ -127,6 +133,24 @@ export function TbmList({
         >
           <Bot className="h-3.5 w-3.5" />
           AI 분석
+        </Button>
+      ),
+    },
+    {
+      key: "_minutes",
+      header: "회의록",
+      render: (item) => (
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 text-xs"
+          onClick={(e) => {
+            e.stopPropagation();
+            setMinutesTbmId(item.tbm.id);
+          }}
+        >
+          <FileText className="h-3.5 w-3.5" />
+          회의록
         </Button>
       ),
     },
@@ -237,6 +261,19 @@ export function TbmList({
             </DialogDescription>
           </DialogHeader>
           {aiTbm && <TbmAiAnalysis tbmId={aiTbm.tbm.id} />}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!minutesTbmId}
+        onOpenChange={(open) => !open && setMinutesTbmId(null)}
+      >
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{minutesTbm?.tbm.topic} - 회의록</DialogTitle>
+            <DialogDescription>AI가 생성한 TBM 회의록입니다.</DialogDescription>
+          </DialogHeader>
+          {minutesTbmId && <TbmMeetingMinutes tbmId={minutesTbmId} />}
         </DialogContent>
       </Dialog>
 

@@ -1393,6 +1393,8 @@ export const tbmRecords = sqliteTable(
     specialNotes: text("special_notes"),
     aiAnalysis: text("ai_analysis"),
     aiAnalyzedAt: text("ai_analyzed_at"),
+    aiMeetingMinutes: text("ai_meeting_minutes"),
+    aiMinutesGeneratedAt: text("ai_minutes_generated_at"),
     createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
       () => new Date(),
     ),

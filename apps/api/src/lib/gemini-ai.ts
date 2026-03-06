@@ -1522,3 +1522,231 @@ Requirements:
     return null;
   }
 }
+
+async function callVertexAI(
+  credentials: GcpCredentials,
+  prompt: string,
+  responseSchema: Record<string, unknown>,
+): Promise<unknown | null> {
+  const response = await fetch(getVertexEndpoint(credentials, GEMINI_MODEL), {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${await getVertexAccessToken(credentials)}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: prompt }],
+        },
+      ],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    logger.error("Gemini Vertex AI call failed", {
+      error: {
+        name: "GeminiApiError",
+        message: `Gemini API returned status ${response.status}`,
+      },
+    });
+    return null;
+  }
+
+  const payload = (await response.json()) as GeminiApiResponse;
+  const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+
+  if (!text) {
+    return null;
+  }
+
+  return JSON.parse(text) as unknown;
+}
+
+export interface TbmMeetingMinutesResult {
+  title: string;
+  date: string;
+  location: string;
+  leader: string;
+  attendeeCount: number;
+  weatherCondition: string;
+  agenda: string[];
+  discussionPoints: string[];
+  safetyInstructions: string[];
+  riskAssessment: {
+    level: string;
+    keyRisks: string[];
+  };
+  actionItems: string[];
+  conclusion: string;
+  modelVersion: string;
+}
+
+function isValidTbmMeetingMinutesShape(
+  value: unknown,
+): value is Omit<TbmMeetingMinutesResult, "modelVersion"> {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const riskAssessment = candidate.riskAssessment;
+  if (typeof riskAssessment !== "object" || riskAssessment === null) {
+    return false;
+  }
+
+  const risk = riskAssessment as Record<string, unknown>;
+  const riskLevel = risk.level;
+
+  return (
+    typeof candidate.title === "string" &&
+    typeof candidate.date === "string" &&
+    typeof candidate.location === "string" &&
+    typeof candidate.leader === "string" &&
+    typeof candidate.attendeeCount === "number" &&
+    Number.isInteger(candidate.attendeeCount) &&
+    candidate.attendeeCount >= 0 &&
+    typeof candidate.weatherCondition === "string" &&
+    isStringArray(candidate.agenda) &&
+    isStringArray(candidate.discussionPoints) &&
+    isStringArray(candidate.safetyInstructions) &&
+    typeof riskLevel === "string" &&
+    ["high", "medium", "low"].includes(riskLevel) &&
+    isStringArray(risk.keyRisks) &&
+    isStringArray(candidate.actionItems) &&
+    typeof candidate.conclusion === "string"
+  );
+}
+
+const TBM_MEETING_MINUTES_RESPONSE_SCHEMA = {
+  type: "OBJECT" as const,
+  properties: {
+    title: { type: "STRING" as const },
+    date: { type: "STRING" as const },
+    location: { type: "STRING" as const },
+    leader: { type: "STRING" as const },
+    attendeeCount: { type: "INTEGER" as const },
+    weatherCondition: { type: "STRING" as const },
+    agenda: {
+      type: "ARRAY" as const,
+      items: { type: "STRING" as const },
+    },
+    discussionPoints: {
+      type: "ARRAY" as const,
+      items: { type: "STRING" as const },
+    },
+    safetyInstructions: {
+      type: "ARRAY" as const,
+      items: { type: "STRING" as const },
+    },
+    riskAssessment: {
+      type: "OBJECT" as const,
+      properties: {
+        level: {
+          type: "STRING" as const,
+          enum: ["high", "medium", "low"],
+        },
+        keyRisks: {
+          type: "ARRAY" as const,
+          items: { type: "STRING" as const },
+        },
+      },
+      required: ["level", "keyRisks"],
+    },
+    actionItems: {
+      type: "ARRAY" as const,
+      items: { type: "STRING" as const },
+    },
+    conclusion: { type: "STRING" as const },
+  },
+  required: [
+    "title",
+    "date",
+    "location",
+    "leader",
+    "attendeeCount",
+    "weatherCondition",
+    "agenda",
+    "discussionPoints",
+    "safetyInstructions",
+    "riskAssessment",
+    "actionItems",
+    "conclusion",
+  ],
+};
+
+export async function generateTbmMeetingMinutes(
+  credentials: GcpCredentials,
+  options: {
+    topic: string;
+    content?: string | null;
+    weatherCondition?: string | null;
+    specialNotes?: string | null;
+    leaderName?: string | null;
+    attendeeCount?: number | null;
+    date?: string | null;
+  },
+): Promise<TbmMeetingMinutesResult | null> {
+  try {
+    if (!options.topic) {
+      return null;
+    }
+
+    const prompt = `You are a construction site safety meeting minutes generator. Generate structured meeting minutes (회의록) from the TBM (Toolbox Meeting) data provided.
+
+당신은 건설 현장 TBM(Toolbox Meeting) 회의록 생성 전문가입니다. 제공된 TBM 정보를 바탕으로 구조화된 회의록을 작성하세요.
+
+Requirements:
+1) title: Meeting title in Korean.
+2) date: Formatted date string in Korean style.
+3) location: Site/location information.
+4) leader: Meeting leader name.
+5) attendeeCount: Number of attendees as integer.
+6) weatherCondition: Weather at the time of meeting.
+7) agenda: Meeting agenda items in Korean (2-6 items).
+8) discussionPoints: Key discussion points in Korean (3-8 items).
+9) safetyInstructions: Safety instructions provided in Korean (3-8 items).
+10) riskAssessment.level: choose one of [high, medium, low].
+11) riskAssessment.keyRisks: Key risks identified in Korean (2-6 items).
+12) actionItems: Action items in Korean (2-6 items).
+13) conclusion: Meeting conclusion summary in Korean (2-3 sentences).
+
+Output must be valid JSON and match the schema exactly.
+
+TBM 주제: ${options.topic}
+TBM 내용: ${options.content ?? ""}
+날씨 상태: ${options.weatherCondition ?? ""}
+특이사항: ${options.specialNotes ?? ""}
+인솔자: ${options.leaderName ?? ""}
+참석 인원: ${options.attendeeCount ?? 0}
+회의 일시: ${options.date ?? ""}`;
+
+    const parsed = await callVertexAI(
+      credentials,
+      prompt,
+      TBM_MEETING_MINUTES_RESPONSE_SCHEMA,
+    );
+
+    if (!parsed || !isValidTbmMeetingMinutesShape(parsed)) {
+      return null;
+    }
+
+    return {
+      ...parsed,
+      modelVersion: GEMINI_MODEL,
+    };
+  } catch (err) {
+    logger.error("Gemini TBM meeting minutes generation failed", {
+      error: {
+        name: "GeminiTbmMeetingMinutesGenerationError",
+        message: err instanceof Error ? err.message : String(err),
+      },
+    });
+    return null;
+  }
+}

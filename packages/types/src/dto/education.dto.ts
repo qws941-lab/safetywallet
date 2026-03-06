@@ -314,6 +314,30 @@ export interface TbmAiAnalysisDto {
   analyzedAt: string | null;
 }
 
+export interface TbmMeetingMinutesResult {
+  title: string;
+  date: string;
+  location: string;
+  leader: string;
+  attendeeCount: number;
+  weatherCondition: string;
+  agenda: string[];
+  discussionPoints: string[];
+  safetyInstructions: string[];
+  riskAssessment: {
+    level: string;
+    keyRisks: string[];
+  };
+  actionItems: string[];
+  conclusion: string;
+  modelVersion: string;
+}
+
+export interface TbmMeetingMinutesDto {
+  minutes: TbmMeetingMinutesResult | null;
+  generatedAt: string | null;
+}
+
 export interface QuizGenerationQuestionDto {
   question: string;
   options: string[];

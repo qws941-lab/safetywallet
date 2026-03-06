@@ -15,6 +15,7 @@ import {
 } from "../../db/schema";
 import { success, error } from "../../lib/response";
 import { logAuditWithContext } from "../../lib/audit";
+import { analyzeTbmRecord } from "../../lib/gemini-ai";
 import type { AppType, CreateTbmBody } from "./helpers";
 
 const app = new Hono<AppType>();
@@ -106,6 +107,30 @@ app.post("/", zValidator("json", CreateTbmInputSchema), async (c) => {
       date: tbm.date,
     },
   );
+
+  if (c.env.GEMINI_API_KEY) {
+    c.executionCtx.waitUntil(
+      (async () => {
+        try {
+          const result = await analyzeTbmRecord(c.env.GEMINI_API_KEY!, {
+            topic: tbm.topic,
+            content: tbm.content,
+            weatherCondition: tbm.weatherCondition,
+            specialNotes: tbm.specialNotes,
+          });
+          if (result) {
+            await db
+              .update(tbmRecords)
+              .set({
+                aiAnalysis: JSON.stringify(result),
+                aiAnalyzedAt: new Date().toISOString(),
+              })
+              .where(eq(tbmRecords.id, tbm.id));
+          }
+        } catch {}
+      })(),
+    );
+  }
 
   return success(c, tbm, 201);
 });
@@ -446,6 +471,102 @@ app.delete("/:id", async (c) => {
   });
 
   return success(c, { deleted: true });
+});
+
+app.post("/:id/analyze", async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user } = c.get("auth");
+  const id = c.req.param("id");
+
+  if (!c.env.GEMINI_API_KEY) {
+    return error(c, "AI_NOT_CONFIGURED", "AI 분석이 설정되지 않았습니다", 503);
+  }
+
+  const tbm = await db
+    .select()
+    .from(tbmRecords)
+    .where(eq(tbmRecords.id, id))
+    .get();
+
+  if (!tbm) {
+    return error(c, "TBM_NOT_FOUND", "TBM record not found", 404);
+  }
+
+  const adminMembership = await db
+    .select()
+    .from(siteMemberships)
+    .where(
+      and(
+        eq(siteMemberships.userId, user.id),
+        eq(siteMemberships.siteId, tbm.siteId),
+        eq(siteMemberships.status, "ACTIVE"),
+        eq(siteMemberships.role, "SITE_ADMIN"),
+      ),
+    )
+    .get();
+  if (!adminMembership && user.role !== "SUPER_ADMIN") {
+    return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
+  }
+
+  const result = await analyzeTbmRecord(c.env.GEMINI_API_KEY, {
+    topic: tbm.topic,
+    content: tbm.content,
+    weatherCondition: tbm.weatherCondition,
+    specialNotes: tbm.specialNotes,
+  });
+
+  if (!result) {
+    return error(c, "AI_ANALYSIS_FAILED", "AI 분석에 실패했습니다", 500);
+  }
+
+  await db
+    .update(tbmRecords)
+    .set({
+      aiAnalysis: JSON.stringify(result),
+      aiAnalyzedAt: new Date().toISOString(),
+    })
+    .where(eq(tbmRecords.id, id));
+
+  return success(c, {
+    analysis: result,
+    analyzedAt: new Date().toISOString(),
+  });
+});
+
+app.get("/:id/ai-analysis", async (c) => {
+  const db = drizzle(c.env.DB);
+  const { user } = c.get("auth");
+  const id = c.req.param("id");
+
+  const tbm = await db
+    .select()
+    .from(tbmRecords)
+    .where(eq(tbmRecords.id, id))
+    .get();
+
+  if (!tbm) {
+    return error(c, "TBM_NOT_FOUND", "TBM record not found", 404);
+  }
+
+  const membership = await db
+    .select()
+    .from(siteMemberships)
+    .where(
+      and(
+        eq(siteMemberships.userId, user.id),
+        eq(siteMemberships.siteId, tbm.siteId),
+        eq(siteMemberships.status, "ACTIVE"),
+      ),
+    )
+    .get();
+  if (!membership && user.role !== "SUPER_ADMIN") {
+    return error(c, "NOT_SITE_MEMBER", "Site membership required", 403);
+  }
+
+  return success(c, {
+    analysis: tbm.aiAnalysis ? JSON.parse(tbm.aiAnalysis) : null,
+    analyzedAt: tbm.aiAnalyzedAt ?? null,
+  });
 });
 
 export default app;

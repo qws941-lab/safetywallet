@@ -39,6 +39,26 @@ export interface GeminiAnalysisResult {
   modelVersion: string;
 }
 
+const POST_CATEGORIES = [
+  "HAZARD",
+  "UNSAFE_BEHAVIOR",
+  "INCONVENIENCE",
+  "SUGGESTION",
+  "BEST_PRACTICE",
+] as const;
+
+const POST_RISK_LEVELS = ["HIGH", "MEDIUM", "LOW"] as const;
+
+export interface PostClassificationResult {
+  suggestedCategory: string;
+  suggestedHazardType: string | null;
+  suggestedRiskLevel: string;
+  classificationReason: string;
+  keyFindings: string[];
+  confidence: number;
+  modelVersion: string;
+}
+
 interface GeminiApiResponse {
   candidates?: Array<{
     content?: {
@@ -241,6 +261,187 @@ Output must be valid JSON and match the schema exactly.`;
     logger.error("Gemini hazard analysis failed", {
       error: {
         name: "GeminiAnalysisError",
+        message: err instanceof Error ? err.message : String(err),
+      },
+    });
+    return null;
+  }
+}
+
+function isValidPostClassificationShape(
+  value: unknown,
+): value is Omit<PostClassificationResult, "modelVersion"> {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const category = candidate.suggestedCategory;
+  const hazardType = candidate.suggestedHazardType;
+
+  if (
+    typeof category !== "string" ||
+    !POST_CATEGORIES.includes(category as (typeof POST_CATEGORIES)[number])
+  ) {
+    return false;
+  }
+
+  if (category === "HAZARD") {
+    if (typeof hazardType !== "string" || hazardType.length === 0) {
+      return false;
+    }
+  } else if (hazardType !== null) {
+    return false;
+  }
+
+  return (
+    typeof candidate.suggestedRiskLevel === "string" &&
+    POST_RISK_LEVELS.includes(
+      candidate.suggestedRiskLevel as (typeof POST_RISK_LEVELS)[number],
+    ) &&
+    typeof candidate.classificationReason === "string" &&
+    isStringArray(candidate.keyFindings) &&
+    typeof candidate.confidence === "number" &&
+    candidate.confidence >= 0 &&
+    candidate.confidence <= 1
+  );
+}
+
+const POST_CLASSIFICATION_RESPONSE_SCHEMA = {
+  type: "OBJECT" as const,
+  properties: {
+    suggestedCategory: {
+      type: "STRING" as const,
+      enum: [...POST_CATEGORIES],
+    },
+    suggestedHazardType: {
+      type: "STRING" as const,
+      nullable: true,
+    },
+    suggestedRiskLevel: {
+      type: "STRING" as const,
+      enum: [...POST_RISK_LEVELS],
+    },
+    classificationReason: {
+      type: "STRING" as const,
+    },
+    keyFindings: {
+      type: "ARRAY" as const,
+      items: { type: "STRING" as const },
+    },
+    confidence: {
+      type: "NUMBER" as const,
+    },
+  },
+  required: [
+    "suggestedCategory",
+    "suggestedHazardType",
+    "suggestedRiskLevel",
+    "classificationReason",
+    "keyFindings",
+    "confidence",
+  ],
+};
+
+export async function classifyPost(
+  credentials: GcpCredentials,
+  content: string,
+  imageData?: ArrayBuffer,
+  mimeType?: string,
+): Promise<PostClassificationResult | null> {
+  try {
+    if (!content || content.trim().length === 0) {
+      return null;
+    }
+
+    const prompt = `당신은 건설 현장 산업안전보건 관리자입니다. 제보 텍스트(및 선택적 이미지)를 분석해 분류를 추천하세요.
+
+You are an occupational safety manager for construction sites. Analyze the report content and optional image, and return strict JSON only.
+
+Requirements:
+1) suggestedCategory: choose exactly one from [HAZARD, UNSAFE_BEHAVIOR, INCONVENIENCE, SUGGESTION, BEST_PRACTICE].
+2) suggestedHazardType: Korean/English hazard type label only when category is HAZARD, otherwise null.
+3) suggestedRiskLevel: choose one of [HIGH, MEDIUM, LOW].
+4) classificationReason: Korean explanation of why this category/risk was selected (1-3 sentences).
+5) keyFindings: Korean bullet-style findings (2-5 items).
+6) confidence: number between 0 and 1.
+
+Output must be valid JSON and match the schema exactly.`;
+
+    const parts: Array<
+      { text: string } | { inline_data: { mime_type: string; data: string } }
+    > = [
+      {
+        text: `${prompt}\n\n제보 내용:\n${content}`,
+      },
+    ];
+
+    if (imageData && imageData.byteLength > 0) {
+      const bytes = new Uint8Array(imageData);
+      let binary = "";
+      const chunkSize = 8192;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+      }
+      const base64 = btoa(binary);
+      parts.push({
+        inline_data: {
+          mime_type: mimeType || "image/jpeg",
+          data: base64,
+        },
+      });
+    }
+
+    const response = await fetch(getVertexEndpoint(credentials, GEMINI_MODEL), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${await getVertexAccessToken(credentials)}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts,
+          },
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: POST_CLASSIFICATION_RESPONSE_SCHEMA,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      logger.error("Gemini post classification failed", {
+        error: {
+          name: "GeminiApiError",
+          message: `Gemini API returned status ${response.status}`,
+        },
+      });
+      return null;
+    }
+
+    const payload = (await response.json()) as GeminiApiResponse;
+    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!text) {
+      return null;
+    }
+
+    const parsed: unknown = JSON.parse(text);
+    if (!isValidPostClassificationShape(parsed)) {
+      return null;
+    }
+
+    return {
+      ...parsed,
+      modelVersion: GEMINI_MODEL,
+    };
+  } catch (err) {
+    logger.error("Gemini post classification failed", {
+      error: {
+        name: "GeminiPostClassificationError",
         message: err instanceof Error ? err.message : String(err),
       },
     });

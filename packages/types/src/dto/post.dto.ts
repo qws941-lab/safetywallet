@@ -114,3 +114,18 @@ export interface ActionImageAiAnalysisDto {
   aiAnalysis: ActionImageAiAnalysisResult | null;
   aiAnalyzedAt: string | null;
 }
+
+export interface PostClassificationResult {
+  suggestedCategory: string;
+  suggestedHazardType: string | null;
+  suggestedRiskLevel: string;
+  classificationReason: string;
+  keyFindings: string[];
+  confidence: number;
+  modelVersion: string;
+}
+
+export interface PostClassificationDto {
+  aiClassification: PostClassificationResult | null;
+  aiClassifiedAt: string | null;
+}

@@ -283,6 +283,8 @@ export const posts = sqliteTable(
     updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
       () => new Date(),
     ),
+    aiClassification: text("ai_classification"),
+    aiClassifiedAt: text("ai_classified_at"),
   },
   (table) => ({
     siteReviewStatusIdx: index("posts_site_review_status_idx").on(

@@ -7,6 +7,7 @@ import { success, error } from "../../lib/response";
 import { logAuditWithContext } from "../../lib/audit";
 import { createLogger } from "../../lib/logger";
 import { hammingDistance, DUPLICATE_THRESHOLD } from "../../lib/phash";
+import { classifyPost, getGcpCredentials } from "../../lib/gemini-ai";
 import { CreatePostSchema } from "../../validators/schemas";
 import {
   posts,
@@ -25,6 +26,17 @@ import {
 } from "./helpers";
 
 const logger = createLogger("posts");
+
+function extractR2Key(fileUrl: string): string {
+  if (!fileUrl) {
+    return "";
+  }
+
+  return fileUrl
+    .replace(/^.*\/files\//, "")
+    .replace(/^.*\/r2\//, "")
+    .replace(/^\/?r2\//, "");
+}
 
 const postRateLimit = rateLimitMiddleware({
   maxRequests: 10,
@@ -282,6 +294,64 @@ export const registerCrudRoutes = (app: PostsRouteApp): void => {
           });
         }
 
+        const gcpCreds = getGcpCredentials(c.env);
+        if (gcpCreds) {
+          c.executionCtx.waitUntil(
+            (async () => {
+              try {
+                let imageData: ArrayBuffer | undefined;
+                let imageMimeType: string | undefined;
+                if (
+                  Array.isArray(data.imageUrls) &&
+                  data.imageUrls.length > 0
+                ) {
+                  const firstImageUrl = data.imageUrls[0];
+                  const r2Key = extractR2Key(firstImageUrl);
+                  if (r2Key) {
+                    const r2Object = await c.env.R2.get(r2Key);
+                    if (r2Object) {
+                      imageData = await r2Object.arrayBuffer();
+                      imageMimeType =
+                        r2Object.httpMetadata?.contentType || "image/jpeg";
+                    }
+                  }
+                }
+
+                const classification = await classifyPost(
+                  gcpCreds,
+                  data.content,
+                  imageData,
+                  imageMimeType,
+                );
+
+                if (classification) {
+                  const updateData: Record<string, unknown> = {
+                    aiClassification: JSON.stringify(classification),
+                    aiClassifiedAt: new Date().toISOString(),
+                  };
+
+                  if (classification.suggestedRiskLevel === "HIGH") {
+                    updateData.isUrgent = true;
+                  }
+
+                  await db
+                    .update(posts)
+                    .set(updateData)
+                    .where(eq(posts.id, postId));
+                }
+              } catch (err) {
+                logger.warn("Auto post AI classification failed", {
+                  error: {
+                    name: err instanceof Error ? err.name : "Unknown",
+                    message: err instanceof Error ? err.message : String(err),
+                  },
+                  postId,
+                });
+              }
+            })(),
+          );
+        }
+
         return success(c, { post: newPost }, 201);
       } catch (e) {
         logger.error("Failed to create post", e);
@@ -451,6 +521,70 @@ export const registerCrudRoutes = (app: PostsRouteApp): void => {
         reviews: postReviews,
       },
     });
+  });
+
+  app.post("/:id/ai-classify", async (c) => {
+    const { user } = c.get("auth");
+    if (user.role !== "SUPER_ADMIN" && user.role !== "SITE_ADMIN") {
+      return error(c, "FORBIDDEN", "Admin access required", 403);
+    }
+
+    const db = drizzle(c.env.DB);
+    const postId = c.req.param("id");
+    const post = await db
+      .select()
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .get();
+    if (!post) {
+      return error(c, "NOT_FOUND", "Post not found", 404);
+    }
+
+    const gcpCreds = getGcpCredentials(c.env);
+    if (!gcpCreds) {
+      return error(c, "AI_NOT_CONFIGURED", "AI service not configured", 503);
+    }
+
+    let imageData: ArrayBuffer | undefined;
+    let imageMimeType: string | undefined;
+    const images = await db
+      .select()
+      .from(postImages)
+      .where(eq(postImages.postId, postId))
+      .all();
+    if (images.length > 0) {
+      const r2Key = extractR2Key(images[0].fileUrl);
+      if (r2Key) {
+        const r2Object = await c.env.R2.get(r2Key);
+        if (r2Object) {
+          imageData = await r2Object.arrayBuffer();
+          imageMimeType = r2Object.httpMetadata?.contentType || "image/jpeg";
+        }
+      }
+    }
+
+    const classification = await classifyPost(
+      gcpCreds,
+      post.content,
+      imageData,
+      imageMimeType,
+    );
+    if (!classification) {
+      return error(c, "AI_FAILED", "AI classification failed", 500);
+    }
+
+    await db
+      .update(posts)
+      .set({
+        aiClassification: JSON.stringify(classification),
+        aiClassifiedAt: new Date().toISOString(),
+        ...(classification.suggestedRiskLevel === "HIGH"
+          ? { isUrgent: true }
+          : {}),
+      })
+      .where(eq(posts.id, postId));
+
+    return success(c, { classification });
   });
 
   app.delete("/:id", async (c) => {

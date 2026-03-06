@@ -154,18 +154,20 @@ export function ContentList({
     },
     {
       key: "_ai",
-      header: "AI",
+      header: "AI 분석",
       render: (item) =>
         item.contentType !== "VIDEO" ? (
           <Button
-            variant="ghost"
-            size="icon"
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs"
             onClick={(e) => {
               e.stopPropagation();
               setAiContentId(item.id);
             }}
           >
-            <Bot className="h-4 w-4" />
+            <Bot className="h-3.5 w-3.5" />
+            AI 분석
           </Button>
         ) : null,
     },

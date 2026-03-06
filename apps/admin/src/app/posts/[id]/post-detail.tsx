@@ -111,7 +111,6 @@ export default function PostDetailPage() {
           <AssignmentForm postId={postId} onRefresh={() => refetch()} />
         )}
         <ReviewHistoryCard reviews={post.reviews} />
-        <AiAnalysisCard postId={postId} />
         {post.metadata && <MetadataCard metadata={post.metadata} />}
       </div>
 

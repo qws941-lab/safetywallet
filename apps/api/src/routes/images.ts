@@ -16,7 +16,7 @@ import {
   filterPersonDetections,
 } from "../lib/workers-ai";
 import { blurPersonRegions } from "../lib/face-blur";
-import { analyzeHazardImage } from "../lib/gemini-ai";
+import { analyzeHazardImage, getGcpCredentials } from "../lib/gemini-ai";
 
 const app = new Hono<{
   Bindings: Env;
@@ -286,9 +286,10 @@ app.post("/upload", uploadRateLimit, async (c) => {
     }
 
     // Gemini multimodal hazard analysis (best-effort, background)
-    if (c.env.GEMINI_API_KEY) {
+    const gcpCreds = getGcpCredentials(c.env);
+    if (gcpCreds) {
       const geminiPromise = analyzeHazardImage(
-        c.env.GEMINI_API_KEY,
+        gcpCreds,
         publicBuffer,
         file.type,
       )

@@ -15,6 +15,7 @@ import { logAuditWithContext } from "../../lib/audit";
 import {
   analyzeEducationContent,
   generateQuizFromContent,
+  getGcpCredentials,
 } from "../../lib/gemini-ai";
 import type { AppType, CreateContentBody } from "./helpers";
 
@@ -105,7 +106,8 @@ app.post("/", zValidator("json", CreateCourseSchema), async (c) => {
   );
 
   // Fire-and-forget AI analysis for non-VIDEO content
-  if (content.contentType !== "VIDEO" && c.env.GEMINI_API_KEY) {
+  const gcpCreds = getGcpCredentials(c.env);
+  if (content.contentType !== "VIDEO" && gcpCreds) {
     const analyzePromise = (async () => {
       try {
         let imageData: ArrayBuffer | undefined;
@@ -131,7 +133,7 @@ app.post("/", zValidator("json", CreateCourseSchema), async (c) => {
         }
 
         const result = await analyzeEducationContent(
-          c.env.GEMINI_API_KEY!,
+          gcpCreds,
           content.contentType as "IMAGE" | "TEXT" | "DOCUMENT",
           { imageData, mimeType, textContent },
         );
@@ -433,8 +435,14 @@ app.post("/:id/analyze", async (c) => {
   const { user } = c.get("auth");
   const id = c.req.param("id");
 
-  if (!c.env.GEMINI_API_KEY) {
-    return error(c, "AI_NOT_CONFIGURED", "Gemini API key not configured", 503);
+  const gcpCreds = getGcpCredentials(c.env);
+  if (!gcpCreds) {
+    return error(
+      c,
+      "AI_NOT_CONFIGURED",
+      "Vertex AI credentials not configured",
+      503,
+    );
   }
 
   const content = await db
@@ -495,7 +503,7 @@ app.post("/:id/analyze", async (c) => {
   }
 
   const result = await analyzeEducationContent(
-    c.env.GEMINI_API_KEY,
+    gcpCreds,
     content.contentType as "IMAGE" | "TEXT" | "DOCUMENT",
     { imageData, mimeType, textContent },
   );
@@ -599,12 +607,12 @@ app.post("/:id/generate-quiz", async (c) => {
     );
   }
 
-  const apiKey = c.env.GEMINI_API_KEY;
-  if (!apiKey) {
+  const gcpCreds = getGcpCredentials(c.env);
+  if (!gcpCreds) {
     return error(c, "AI_UNAVAILABLE", "AI not configured", 503);
   }
 
-  const result = await generateQuizFromContent(apiKey, {
+  const result = await generateQuizFromContent(gcpCreds, {
     contentTitle: content.title,
     contentAnalysis: content.aiAnalysis,
   });

@@ -4,7 +4,7 @@ import { eq, and } from "drizzle-orm";
 import type { Env, AuthContext } from "../../types";
 import { success, error } from "../../lib/response";
 import { actions, actionImages, posts, siteMemberships } from "../../db/schema";
-import { analyzeActionImage } from "../../lib/gemini-ai";
+import { analyzeActionImage, getGcpCredentials } from "../../lib/gemini-ai";
 
 const app = new Hono<{
   Bindings: Env;
@@ -95,8 +95,8 @@ app.post("/:id/images", async (c) => {
     .returning()
     .get();
 
-  const geminiApiKey = c.env.GEMINI_API_KEY;
-  if (geminiApiKey && file) {
+  const gcpCreds = getGcpCredentials(c.env);
+  if (gcpCreds && file) {
     const mimeType = file.type || "image/jpeg";
     c.executionCtx.waitUntil(
       (async () => {
@@ -110,11 +110,7 @@ app.post("/:id/images", async (c) => {
           }
           const base64 = btoa(binary);
 
-          const result = await analyzeActionImage(
-            geminiApiKey,
-            base64,
-            mimeType,
-          );
+          const result = await analyzeActionImage(gcpCreds, base64, mimeType);
 
           if (result) {
             await db
@@ -141,8 +137,14 @@ app.post("/:id/images/:imageId/analyze", async (c) => {
   const actionId = c.req.param("id");
   const imageId = c.req.param("imageId");
 
-  if (!c.env.GEMINI_API_KEY) {
-    return error(c, "AI_NOT_CONFIGURED", "Gemini API key not configured", 503);
+  const gcpCreds = getGcpCredentials(c.env);
+  if (!gcpCreds) {
+    return error(
+      c,
+      "AI_NOT_CONFIGURED",
+      "Vertex AI credentials not configured",
+      503,
+    );
   }
 
   const action = await db
@@ -211,11 +213,7 @@ app.post("/:id/images/:imageId/analyze", async (c) => {
   const base64 = btoa(binary);
   const mimeType = object.httpMetadata?.contentType ?? "image/jpeg";
 
-  const result = await analyzeActionImage(
-    c.env.GEMINI_API_KEY,
-    base64,
-    mimeType,
-  );
+  const result = await analyzeActionImage(gcpCreds, base64, mimeType);
 
   if (!result) {
     return error(c, "AI_ANALYSIS_FAILED", "AI 분석에 실패했습니다", 500);

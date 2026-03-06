@@ -7,7 +7,7 @@ workers_dev = true
 # Custom domain routes (requires Zone permissions in API token)
 routes = [
   { pattern = "safetywallet.jclee.me/*", zone_name = "jclee.me" },
-  { pattern = "admin.safetywallet.jclee.me", custom_domain = true }
+  { pattern = "admin.safetywallet.jclee.me", custom_domain = true },
 ]
 
 [vars]
@@ -28,7 +28,10 @@ FAS_SITE_NAME = "송도세브란스"
 #   ALERT_WEBHOOK_URL   — Webhook URL for operational alerts (cron failures, FAS down)
 #   FAS_SYNC_SECRET     — Bearer secret for POST /fas-sync admin endpoint
 #   ELASTICSEARCH_URL   — Elasticsearch endpoint (production only)
-#   GEMINI_API_KEY      — Gemini API key for AI hazard image analysis
+#   GCP_PROJECT_ID               — GCP project ID for Vertex AI
+#   GCP_SERVICE_ACCOUNT_EMAIL    — Service Account email
+#   GCP_PRIVATE_KEY              — Service Account private key (PEM)
+#   GCP_LOCATION                 — Vertex AI location (default: us-central1)
 
 # D1 Database
 [[d1_databases]]
@@ -89,9 +92,7 @@ head_sampling_rate = 1
 
 # Durable Objects for rate limiting
 [durable_objects]
-bindings = [
-  { name = "RATE_LIMITER", class_name = "RateLimiter" }
-]
+bindings = [{ name = "RATE_LIMITER", class_name = "RateLimiter" }]
 
 [[migrations]]
 tag = "v1"
@@ -156,9 +157,7 @@ enabled = true
 head_sampling_rate = 1
 
 [env.dev.durable_objects]
-bindings = [
-  { name = "RATE_LIMITER", class_name = "RateLimiter" }
-]
+bindings = [{ name = "RATE_LIMITER", class_name = "RateLimiter" }]
 
 [[env.dev.queues.producers]]
 queue = "safetywallet-notifications"

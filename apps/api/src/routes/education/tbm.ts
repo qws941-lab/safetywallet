@@ -15,7 +15,7 @@ import {
 } from "../../db/schema";
 import { success, error } from "../../lib/response";
 import { logAuditWithContext } from "../../lib/audit";
-import { analyzeTbmRecord } from "../../lib/gemini-ai";
+import { analyzeTbmRecord, getGcpCredentials } from "../../lib/gemini-ai";
 import type { AppType, CreateTbmBody } from "./helpers";
 
 const app = new Hono<AppType>();
@@ -108,11 +108,12 @@ app.post("/", zValidator("json", CreateTbmInputSchema), async (c) => {
     },
   );
 
-  if (c.env.GEMINI_API_KEY) {
+  const gcpCreds = getGcpCredentials(c.env);
+  if (gcpCreds) {
     c.executionCtx.waitUntil(
       (async () => {
         try {
-          const result = await analyzeTbmRecord(c.env.GEMINI_API_KEY!, {
+          const result = await analyzeTbmRecord(gcpCreds, {
             topic: tbm.topic,
             content: tbm.content,
             weatherCondition: tbm.weatherCondition,
@@ -478,7 +479,8 @@ app.post("/:id/analyze", async (c) => {
   const { user } = c.get("auth");
   const id = c.req.param("id");
 
-  if (!c.env.GEMINI_API_KEY) {
+  const gcpCreds = getGcpCredentials(c.env);
+  if (!gcpCreds) {
     return error(c, "AI_NOT_CONFIGURED", "AI 분석이 설정되지 않았습니다", 503);
   }
 
@@ -508,7 +510,7 @@ app.post("/:id/analyze", async (c) => {
     return error(c, "SITE_ADMIN_REQUIRED", "관리자 권한이 필요합니다", 403);
   }
 
-  const result = await analyzeTbmRecord(c.env.GEMINI_API_KEY, {
+  const result = await analyzeTbmRecord(gcpCreds, {
     topic: tbm.topic,
     content: tbm.content,
     weatherCondition: tbm.weatherCondition,

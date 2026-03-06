@@ -1,9 +1,13 @@
 import { createLogger } from "./logger";
+import {
+  getVertexAccessToken,
+  getVertexEndpoint,
+  type GcpCredentials,
+} from "./gcp-auth";
 
 const logger = createLogger("gemini-ai");
 
 export const GEMINI_MODEL = "gemini-2.0-flash";
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const HAZARD_TYPES = [
   "fall_hazard",
@@ -41,6 +45,28 @@ interface GeminiApiResponse {
       parts?: Array<{ text?: string }>;
     };
   }>;
+}
+
+export function getGcpCredentials(env: {
+  GCP_PROJECT_ID?: string;
+  GCP_SERVICE_ACCOUNT_EMAIL?: string;
+  GCP_PRIVATE_KEY?: string;
+  GCP_LOCATION?: string;
+}): GcpCredentials | null {
+  if (
+    !env.GCP_PROJECT_ID ||
+    !env.GCP_SERVICE_ACCOUNT_EMAIL ||
+    !env.GCP_PRIVATE_KEY
+  ) {
+    return null;
+  }
+
+  return {
+    projectId: env.GCP_PROJECT_ID,
+    clientEmail: env.GCP_SERVICE_ACCOUNT_EMAIL,
+    privateKey: env.GCP_PRIVATE_KEY,
+    location: env.GCP_LOCATION,
+  };
 }
 
 function isStringArray(value: unknown): value is string[] {
@@ -86,12 +112,12 @@ function isValidAnalysisResultShape(
 }
 
 export async function analyzeHazardImage(
-  apiKey: string,
+  credentials: GcpCredentials,
   imageData: ArrayBuffer,
   mimeType: string,
 ): Promise<GeminiAnalysisResult | null> {
   try {
-    if (!apiKey || !mimeType || imageData.byteLength === 0) {
+    if (!mimeType || imageData.byteLength === 0) {
       return null;
     }
 
@@ -118,10 +144,10 @@ Requirements:
 
 Output must be valid JSON and match the schema exactly.`;
 
-    const response = await fetch(GEMINI_ENDPOINT, {
+    const response = await fetch(getVertexEndpoint(credentials, GEMINI_MODEL), {
       method: "POST",
       headers: {
-        "x-goog-api-key": apiKey,
+        Authorization: `Bearer ${await getVertexAccessToken(credentials)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -361,7 +387,7 @@ const EDUCATION_RESPONSE_SCHEMA = {
 };
 
 export async function analyzeEducationContent(
-  apiKey: string,
+  credentials: GcpCredentials,
   contentType: "IMAGE" | "TEXT" | "DOCUMENT",
   options: {
     imageData?: ArrayBuffer;
@@ -371,10 +397,6 @@ export async function analyzeEducationContent(
   },
 ): Promise<EducationAnalysisResult | null> {
   try {
-    if (!apiKey) {
-      return null;
-    }
-
     const prompt = buildEducationPrompt(contentType);
     const parts: Array<
       { text: string } | { inline_data: { mime_type: string; data: string } }
@@ -420,10 +442,10 @@ ${options.textContent}`,
       return null;
     }
 
-    const response = await fetch(GEMINI_ENDPOINT, {
+    const response = await fetch(getVertexEndpoint(credentials, GEMINI_MODEL), {
       method: "POST",
       headers: {
-        "x-goog-api-key": apiKey,
+        Authorization: `Bearer ${await getVertexAccessToken(credentials)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -549,7 +571,7 @@ const TBM_RESPONSE_SCHEMA = {
 };
 
 export async function analyzeTbmRecord(
-  apiKey: string,
+  credentials: GcpCredentials,
   options: {
     topic: string;
     content?: string | null;
@@ -558,7 +580,7 @@ export async function analyzeTbmRecord(
   },
 ): Promise<TbmAnalysisResult | null> {
   try {
-    if (!apiKey || !options.topic) {
+    if (!options.topic) {
       return null;
     }
 
@@ -589,10 +611,10 @@ Output must be valid JSON and match the schema exactly.`;
       textParts.push(`\n특이사항: ${options.specialNotes}`);
     }
 
-    const response = await fetch(GEMINI_ENDPOINT, {
+    const response = await fetch(getVertexEndpoint(credentials, GEMINI_MODEL), {
       method: "POST",
       headers: {
-        "x-goog-api-key": apiKey,
+        Authorization: `Bearer ${await getVertexAccessToken(credentials)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -739,14 +761,14 @@ const QUIZ_GENERATION_RESPONSE_SCHEMA = {
 };
 
 export async function generateQuizFromContent(
-  apiKey: string,
+  credentials: GcpCredentials,
   options: {
     contentTitle: string;
     contentAnalysis: string;
   },
 ): Promise<QuizGenerationResult | null> {
   try {
-    if (!apiKey || !options.contentTitle || !options.contentAnalysis) {
+    if (!options.contentTitle || !options.contentAnalysis) {
       return null;
     }
 
@@ -765,10 +787,10 @@ Requirements:
 
 Output must be valid JSON and match the schema exactly.`;
 
-    const response = await fetch(GEMINI_ENDPOINT, {
+    const response = await fetch(getVertexEndpoint(credentials, GEMINI_MODEL), {
       method: "POST",
       headers: {
-        "x-goog-api-key": apiKey,
+        Authorization: `Bearer ${await getVertexAccessToken(credentials)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -891,12 +913,12 @@ const ACTION_IMAGE_RESPONSE_SCHEMA = {
 };
 
 export async function analyzeActionImage(
-  apiKey: string,
+  credentials: GcpCredentials,
   imageData: string,
   mimeType: string,
 ): Promise<ActionImageAnalysisResult | null> {
   try {
-    if (!apiKey || !mimeType || !imageData) {
+    if (!mimeType || !imageData) {
       return null;
     }
 
@@ -913,10 +935,10 @@ export async function analyzeActionImage(
 
 모든 응답은 한국어로 작성하세요.`;
 
-    const response = await fetch(GEMINI_ENDPOINT, {
+    const response = await fetch(getVertexEndpoint(credentials, GEMINI_MODEL), {
       method: "POST",
       headers: {
-        "x-goog-api-key": apiKey,
+        Authorization: `Bearer ${await getVertexAccessToken(credentials)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -1004,11 +1026,11 @@ const ANNOUNCEMENT_DRAFT_RESPONSE_SCHEMA = {
 };
 
 export async function generateAnnouncementDraft(
-  apiKey: string,
+  credentials: GcpCredentials,
   keywords: string,
 ): Promise<AnnouncementDraftResult | null> {
   try {
-    if (!apiKey || !keywords) {
+    if (!keywords) {
       return null;
     }
 
@@ -1030,10 +1052,10 @@ Requirements:
 
 공지사항은 현장 근로자가 이해하기 쉽게 작성하세요.`;
 
-    const response = await fetch(GEMINI_ENDPOINT, {
+    const response = await fetch(getVertexEndpoint(credentials, GEMINI_MODEL), {
       method: "POST",
       headers: {
-        "x-goog-api-key": apiKey,
+        Authorization: `Bearer ${await getVertexAccessToken(credentials)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

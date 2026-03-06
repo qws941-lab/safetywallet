@@ -159,7 +159,11 @@ app.get("/votes/results", requireAdmin, async (c) => {
   const candidateRows = await db
     .select({
       candidateId: voteCandidates.id,
-      candidateName: users.nameMasked,
+      userId: users.id,
+      userName: users.name,
+      userNameMasked: users.nameMasked,
+      userCompanyName: users.companyName,
+      userTradeType: users.tradeType,
       voteCount: voteCountExpression.as("voteCount"),
     })
     .from(voteCandidates)
@@ -175,13 +179,26 @@ app.get("/votes/results", requireAdmin, async (c) => {
     .where(
       and(eq(voteCandidates.siteId, siteId), eq(voteCandidates.month, month)),
     )
-    .groupBy(voteCandidates.id, users.nameMasked)
+    .groupBy(
+      voteCandidates.id,
+      users.id,
+      users.name,
+      users.nameMasked,
+      users.companyName,
+      users.tradeType,
+    )
     .orderBy(desc(voteCountExpression), users.nameMasked)
     .all();
 
   const results = candidateRows.map((candidate, index) => ({
     candidateId: candidate.candidateId,
-    candidateName: candidate.candidateName || "",
+    user: {
+      id: candidate.userId,
+      name: candidate.userName,
+      nameMasked: candidate.userNameMasked,
+      companyName: candidate.userCompanyName,
+      tradeType: candidate.userTradeType,
+    },
     voteCount: candidate.voteCount,
     rank: index + 1,
   }));
@@ -201,10 +218,12 @@ app.get("/votes/results", requireAdmin, async (c) => {
       },
     );
 
-    const headers = ["후보 ID", "후보자명", "득표수", "순위"];
+    const headers = ["후보 ID", "후보자명", "소속", "업종", "득표수", "순위"];
     const rows = results.map((result) => [
       result.candidateId,
-      result.candidateName,
+      result.user.nameMasked || result.user.name || "",
+      result.user.companyName || "",
+      result.user.tradeType || "",
       result.voteCount,
       result.rank,
     ]);

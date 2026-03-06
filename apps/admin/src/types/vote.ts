@@ -24,15 +24,16 @@ export interface VoteCandidate {
 }
 
 export interface VoteResult {
-  user: VoteCandidate["user"];
-  voteCount: number;
   candidateId: string;
-  source: string;
-}
-
-export interface VoteResultsResponse {
-  month: string;
-  results: VoteResult[];
+  user: {
+    id: string;
+    name: string | null;
+    nameMasked: string | null;
+    companyName: string | null;
+    tradeType: string | null;
+  };
+  voteCount: number;
+  rank: number;
 }
 
 export interface VotePeriod {

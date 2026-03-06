@@ -297,7 +297,15 @@ describe("admin/votes", () => {
   describe("GET /votes/results", () => {
     it("returns vote results as JSON", async () => {
       mockAll.mockResolvedValueOnce([
-        { candidateId: "vc-1", candidateName: "K**", voteCount: 5 },
+        {
+          candidateId: "vc-1",
+          userId: "u-1",
+          userName: "Kim",
+          userNameMasked: "K**",
+          userCompanyName: "Co",
+          userTradeType: "Elec",
+          voteCount: 5,
+        },
       ]);
       const { app, env } = await createApp(makeAuth());
       const res = await app.request(
@@ -326,7 +334,15 @@ describe("admin/votes", () => {
 
     it("returns CSV when format=csv", async () => {
       mockAll.mockResolvedValueOnce([
-        { candidateId: "vc-1", candidateName: "K**", voteCount: 5 },
+        {
+          candidateId: "vc-1",
+          userId: "u-1",
+          userName: "Kim",
+          userNameMasked: "K**",
+          userCompanyName: "Co",
+          userTradeType: "Elec",
+          voteCount: 5,
+        },
       ]);
       const { app, env } = await createApp(makeAuth());
       const res = await app.request(
@@ -349,9 +365,17 @@ describe("admin/votes", () => {
       expect(res.status).toBe(400);
     });
 
-    it("normalizes null candidate names to empty string", async () => {
+    it("passes through null user fields without normalization", async () => {
       mockAll.mockResolvedValueOnce([
-        { candidateId: "vc-1", candidateName: null, voteCount: 1 },
+        {
+          candidateId: "vc-1",
+          userId: "u-1",
+          userName: null,
+          userNameMasked: null,
+          userCompanyName: null,
+          userTradeType: null,
+          voteCount: 1,
+        },
       ]);
       const { app, env } = await createApp(makeAuth());
       const res = await app.request(
@@ -361,9 +385,9 @@ describe("admin/votes", () => {
       );
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
-        data: Array<{ candidateName: string }>;
+        data: Array<{ user: { nameMasked: string | null } }>;
       };
-      expect(body.data[0].candidateName).toBe("");
+      expect(body.data[0].user.nameMasked).toBeNull();
     });
   });
 

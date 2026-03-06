@@ -173,9 +173,9 @@ export function CandidatesCard({ month }: CandidatesCardProps) {
                 candidates.map((candidate) => (
                   <TableRow key={candidate.id}>
                     <TableCell className="font-medium">
-                      {candidate.user.nameMasked}
+                      {candidate.user?.nameMasked}
                       <span className="text-xs text-muted-foreground block">
-                        {candidate.user.companyName}
+                        {candidate.user?.companyName}
                       </span>
                     </TableCell>
                     <TableCell>

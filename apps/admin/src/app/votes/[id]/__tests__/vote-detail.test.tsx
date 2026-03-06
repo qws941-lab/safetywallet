@@ -96,21 +96,20 @@ vi.mock("@safetywallet/ui", () => ({
   useToast: () => ({ toast: toastMock }),
 }));
 
-const baseData = {
-  period: { id: "p1" },
-  results: [
-    {
-      candidateId: "c1",
-      voteCount: 5,
-      user: {
-        nameMasked: "홍길동",
-        name: "홍길동",
-        companyName: "안전건설",
-        tradeType: "전기",
-      },
+const baseResults = [
+  {
+    candidateId: "c1",
+    voteCount: 5,
+    rank: 1,
+    user: {
+      id: "u1",
+      nameMasked: "홍길동",
+      name: "홍길동",
+      companyName: "안전건설",
+      tradeType: "전기",
     },
-  ],
-};
+  },
+];
 
 describe("vote detail page", () => {
   beforeEach(() => {
@@ -119,7 +118,7 @@ describe("vote detail page", () => {
     invalidateQueriesMock.mockReset();
     mutateMock.mockReset();
 
-    useQueryMock.mockReturnValue({ data: baseData, isLoading: false });
+    useQueryMock.mockReturnValue({ data: baseResults, isLoading: false });
     useMutationMock.mockImplementation(
       ({ onSuccess }: { onSuccess?: () => void }) => ({
         mutate: (_id: string) => {
@@ -189,7 +188,7 @@ describe("vote detail page", () => {
 
   it("disables export when no results", () => {
     useQueryMock.mockReturnValueOnce({
-      data: { ...baseData, results: [] },
+      data: [],
       isLoading: false,
     });
 

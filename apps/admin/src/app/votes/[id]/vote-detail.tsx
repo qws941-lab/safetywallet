@@ -32,7 +32,7 @@ import { ArrowLeft, Download, Plus, Trash2, Users } from "lucide-react";
 import { useAuthStore } from "@/stores/auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
-import { VoteResultsResponse } from "@/types/vote";
+import type { VoteResult } from "@/types/vote";
 
 export default function VoteDetailPage() {
   const router = useRouter();
@@ -43,10 +43,10 @@ export default function VoteDetailPage() {
   const { toast } = useToast();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const { data, isLoading } = useQuery<VoteResultsResponse>({
+  const { data, isLoading } = useQuery<VoteResult[]>({
     queryKey: ["votes", "results", siteId, month],
     queryFn: () =>
-      apiFetch<VoteResultsResponse>(
+      apiFetch<VoteResult[]>(
         `/admin/votes/results?siteId=${siteId}&month=${month}`,
       ),
     enabled: !!siteId && !!month,
@@ -72,9 +72,9 @@ export default function VoteDetailPage() {
   });
 
   const handleExportCSV = () => {
-    if (!data?.results.length) return;
+    if (!data?.length) return;
     const header = "순위,이름,소속,업종,득표수";
-    const rows = data.results.map((r, i) =>
+    const rows = data.map((r, i) =>
       [
         i + 1,
         r.user.nameMasked || r.user.name,
@@ -105,8 +105,7 @@ export default function VoteDetailPage() {
   };
 
   const status = getStatus();
-  const totalVotes =
-    data?.results.reduce((sum, r) => sum + r.voteCount, 0) || 0;
+  const totalVotes = data?.reduce((sum, r) => sum + r.voteCount, 0) || 0;
 
   if (isLoading) {
     return <div className="p-6">로딩 중...</div>;
@@ -142,7 +141,7 @@ export default function VoteDetailPage() {
           <Button
             variant="outline"
             onClick={handleExportCSV}
-            disabled={!data?.results.length}
+            disabled={!data?.length}
           >
             <Download className="h-4 w-4 mr-2" />
             결과 내보내기
@@ -167,7 +166,7 @@ export default function VoteDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {data?.results.length === 0 ? (
+            {data?.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
                 등록된 후보자가 없습니다.
               </p>
@@ -183,7 +182,7 @@ export default function VoteDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data?.results.map((result, index) => (
+                  {data?.map((result, index) => (
                     <TableRow key={result.candidateId}>
                       <TableCell className="font-bold">{index + 1}</TableCell>
                       <TableCell>

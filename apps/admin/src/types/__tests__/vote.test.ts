@@ -4,7 +4,6 @@ import type {
   VoteElection,
   VotePeriod,
   VoteResult,
-  VoteResultsResponse,
 } from "@/types/vote";
 
 describe("vote types", () => {
@@ -49,17 +48,14 @@ describe("vote types", () => {
     };
 
     const result: VoteResult = {
+      candidateId: candidate.id,
       user: candidate.user,
       voteCount: candidate.voteCount ?? 0,
-      candidateId: candidate.id,
-      source: candidate.source,
+      rank: 1,
     };
 
-    const response: VoteResultsResponse = {
-      month: "2026-02",
-      results: [result],
-    };
+    const results: VoteResult[] = [result];
 
-    expect(response.results[0].user.nameMasked).toBe("홍*동");
+    expect(results[0].user.nameMasked).toBe("홍*동");
   });
 });

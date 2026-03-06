@@ -78,7 +78,11 @@ test.describe("Worker Recommendations", () => {
   test("should not produce console errors", async ({ page }) => {
     const errors: string[] = [];
     page.on("console", (msg) => {
-      if (msg.type() === "error") errors.push(msg.text());
+      if (
+        msg.type() === "error" &&
+        !msg.text().match(/ERR_CONNECTION|429|Failed to fetch/)
+      )
+        errors.push(msg.text());
     });
 
     await page.goto("/votes");

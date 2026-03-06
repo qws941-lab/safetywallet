@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 
+// Login page tests must run without auth state — authenticated users get redirected
+test.use({ storageState: { cookies: [], origins: [] } });
 test.describe("Worker Login", () => {
   test("should display login form with required fields", async ({ page }) => {
     await page.goto("/login");

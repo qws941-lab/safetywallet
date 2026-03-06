@@ -89,12 +89,7 @@ export function ResultsCard({ month }: ResultsCardProps) {
                   .map((result, index) => (
                     <TableRow key={result.candidateId}>
                       <TableCell className="font-medium">{index + 1}</TableCell>
-                      <TableCell>
-                        {result.user.nameMasked}
-                        <span className="text-xs text-muted-foreground block">
-                          {result.user.companyName}
-                        </span>
-                      </TableCell>
+                      <TableCell>{result.user.nameMasked}</TableCell>
                       <TableCell className="text-right font-bold">
                         {result.voteCount}
                       </TableCell>

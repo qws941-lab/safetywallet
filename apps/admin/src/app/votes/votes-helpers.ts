@@ -63,9 +63,10 @@ export function getPeriodStatus(
 /** Build and download a UTF-8 BOM CSV from vote results. */
 export function exportResultsCsv(results: VoteResult[], month: string): void {
   const sorted = [...results].sort((a, b) => b.voteCount - a.voteCount);
-  let csv = "순위,이름,소속,득표수\n";
+  let csv = "순위,이름,득표수\n";
   for (const [index, result] of sorted.entries()) {
-    csv += `${index + 1},${result.user.nameMasked},${result.user.companyName},${result.voteCount}\n`;
+    csv += `${index + 1},${result.user.nameMasked},${result.voteCount}
+`;
   }
   const BOM = "\uFEFF";
   const blob = new Blob([BOM + csv], { type: "text/csv;charset=utf-8;" });

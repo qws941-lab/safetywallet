@@ -14,7 +14,7 @@ Owns feature routers and feature-subdir composition.
 - `auth/` files (7): `index.ts`, `lockout.ts`, `login-admin.ts`, `login-worker.ts`, `login.ts`, `register.ts`, `session.ts`.
 - `education/` files (8 + test subdir): `completions.ts`, `contents.ts`, `helpers.ts`, `index.ts`, `quiz-attempts.ts`, `quizzes.ts`, `statutory.ts`, `tbm.ts`, `__tests__/`.
 - `posts/` files (4): `crud-routes.ts`, `helpers.ts`, `index.ts`, `media-routes.ts`.
-- Child modules: `admin/` and `__tests__/` each with dedicated `AGENTS.md`.
+- Child modules with dedicated docs: `admin/`, `auth/`, `education/`, `__tests__/`.
 
 ## CONVENTIONS
 
@@ -34,5 +34,5 @@ Owns feature routers and feature-subdir composition.
 
 - Check `src/index.ts` route mounts against top-level route file list.
 - Check each feature subdir file list before updating inventory bullets.
-- Check `admin/` and `__tests__/` remain documented as child-owned modules.
+- Check `admin/`, `auth/`, `education/`, and `__tests__/` remain documented as child-owned modules.
 - Check new route files for matching tests in `src/routes/__tests__/` naming.

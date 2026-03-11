@@ -7,7 +7,7 @@ Owns migration files and Drizzle metadata snapshots.
 
 ## INVENTORY
 
-- SQL migrations (28): `0000_lovely_jocasta.sql` through `0027_add_login_exempt.sql`.
+- SQL migrations (29): `0000_lovely_jocasta.sql` through `0028_add_site_memberships_role_index.sql`.
 - SQL numbering quirks present: duplicate `0003`; no `0011`.
 - Meta files (4): `meta/_journal.json`, `meta/0000_snapshot.json`, `meta/0012_snapshot.json`, `meta/0017_snapshot.json`.
 - Local doc: `AGENTS.md`.

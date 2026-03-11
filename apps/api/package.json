@@ -18,7 +18,7 @@
     "@hono/zod-validator": "^0.7.6",
     "@safetywallet/types": "*",
     "drizzle-orm": "^0.45.1",
-    "hono": "^4.11.10",
+    "hono": "^4.12.7",
     "jose": "^6.2.0",
     "jpeg-js": "^0.4.4",
     "mysql2": "^3.19.0",

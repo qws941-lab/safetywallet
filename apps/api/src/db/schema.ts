@@ -1700,3 +1700,29 @@ export const imageAiAnalysis = sqliteTable(
     postIdIdx: index("image_ai_analysis_post_id_idx").on(table.postId),
   }),
 );
+
+export const tokenFamilies = sqliteTable(
+  "token_families",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    familyId: text("family_id").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    parentTokenId: text("parent_token_id"),
+    used: integer("used", { mode: "boolean" }).default(false).notNull(),
+    revokedAt: integer("revoked_at", { mode: "timestamp" }),
+    expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(
+      () => new Date(),
+    ),
+  },
+  (table) => ({
+    userIdIdx: index("token_families_user_id_idx").on(table.userId),
+    familyIdIdx: index("token_families_family_id_idx").on(table.familyId),
+    tokenHashIdx: index("token_families_token_hash_idx").on(table.tokenHash),
+  }),
+);

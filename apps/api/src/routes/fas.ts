@@ -30,32 +30,35 @@ app.post(
     }
     const db = drizzle(c.env.DB);
 
-    let data: {
-      siteId?: string;
-      workers?: Array<{
-        externalWorkerId?: string;
-        name?: string;
-        phone?: string;
-        dob?: string;
-        companyName?: string;
-        tradeType?: string;
-      }>;
-    } | null = null;
-    try {
-      c.req.valid("json");
-      data = (await c.req.raw.clone().json()) as {
-        siteId?: string;
-        workers?: Array<{
-          externalWorkerId?: string;
-          name?: string;
-          phone?: string;
-          dob?: string;
-          companyName?: string;
-          tradeType?: string;
-        }>;
-      };
-    } catch {
-      return error(c, "INVALID_JSON", "Invalid JSON", 400);
+    let data = c.req.valid("json") as
+      | {
+          siteId?: string;
+          workers?: Array<{
+            externalWorkerId?: string;
+            name?: string;
+            phone?: string;
+            dob?: string;
+            companyName?: string;
+            tradeType?: string;
+          }>;
+        }
+      | undefined;
+    if (!data) {
+      try {
+        data = JSON.parse(await c.req.text()) as {
+          siteId?: string;
+          workers?: Array<{
+            externalWorkerId?: string;
+            name?: string;
+            phone?: string;
+            dob?: string;
+            companyName?: string;
+            tradeType?: string;
+          }>;
+        };
+      } catch {
+        return error(c, "INVALID_JSON", "Invalid JSON", 400);
+      }
     }
 
     if (!data.workers || !Array.isArray(data.workers)) {

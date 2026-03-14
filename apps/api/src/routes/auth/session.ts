@@ -6,6 +6,7 @@ import { HTTPException } from "hono/http-exception";
 import { users, attendance, siteMemberships, sites } from "../../db/schema";
 import { decrypt } from "../../lib/crypto";
 import { signJwt } from "../../lib/jwt";
+import { invalidateCachedUser } from "../../lib/session-cache";
 import { success, error } from "../../lib/response";
 import { createLogger } from "../../lib/logger";
 import { fasCheckWorkerAttendance } from "../../lib/fas";
@@ -216,6 +217,20 @@ sessionRoute.post(
     }
 
     const db = drizzle(c.env.DB);
+
+    // First get the user to invalidate their KV cache
+    const userResults = await db
+      .select()
+      .from(users)
+      .where(eq(users.refreshToken, body.refreshToken))
+      .limit(1);
+
+    const user = userResults[0];
+
+    // Invalidate KV cache before clearing the refresh token
+    if (user) {
+      await invalidateCachedUser(c.env.KV, user.id);
+    }
 
     await db
       .update(users)

@@ -3,6 +3,7 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { parse } from "yaml";
 import type { Env, AuthContext } from "../../types";
 import { success, error } from "../../lib/response";
+import { sanitizeErrorMessage } from "../../lib/error-sanitizer";
 import { requireAdmin } from "./helpers";
 import { createLogger } from "../../lib/logger";
 
@@ -21,10 +22,12 @@ function toStatusCode(status: number): ContentfulStatusCode {
 
 function getGitHubErrorMessage(raw: string, fallback: string): string {
   if (!raw) return fallback;
+  let candidate = fallback;
+
   try {
     const parsed = JSON.parse(raw) as { message?: unknown };
     if (typeof parsed.message === "string" && parsed.message.trim()) {
-      return parsed.message.trim();
+      candidate = parsed.message.trim();
     }
   } catch (error) {
     logger.warn("Failed to parse GitHub error JSON", {
@@ -33,8 +36,11 @@ function getGitHubErrorMessage(raw: string, fallback: string): string {
           ? { name: error.name, message: error.message }
           : { name: "UnknownError", message: String(error) },
     });
+    candidate = raw.slice(0, 300);
   }
-  return raw.slice(0, 300);
+
+  const sanitized = sanitizeErrorMessage(candidate);
+  return sanitized || fallback;
 }
 
 /* ------------------------------------------------------------------ */

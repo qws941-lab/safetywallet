@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger as honoLogger } from "hono/logger";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { drizzle } from "drizzle-orm/d1";
 import { fasGetAllEmployeesPaginated, initFasConfig } from "./lib/fas";
 import {
@@ -33,11 +34,13 @@ import notificationsRoute from "./routes/notifications";
 import { securityHeaders } from "./middleware/security-headers";
 import { analyticsMiddleware } from "./middleware/analytics";
 import { requestLoggerMiddleware } from "./middleware/request-logger";
+import { csrfProtection } from "./middleware/csrf";
 
 import { createLogger } from "./lib/logger";
 import { createErrorIssue } from "./lib/auto-issue";
 import { authMiddleware } from "./middleware/auth";
 import { generateSignedPath, verifySignedPath } from "./lib/signed-url";
+import { createSafeErrorResponse } from "./lib/error-sanitizer";
 
 const logger = createLogger("index");
 const app = new Hono<{ Bindings: Env }>();
@@ -77,6 +80,7 @@ app.use("*", async (c, next) => {
   });
   return corsMiddleware(c, next);
 });
+app.use("/api/*", csrfProtection);
 
 const api = new Hono<{ Bindings: Env }>();
 const schedulerAdmin = new Hono<{ Bindings: Env }>();
@@ -432,9 +436,18 @@ app.onError((err, c) => {
     waitUntil: (p) => c.executionCtx.waitUntil(p),
   });
 
-  log.error(err.message, err, {
+  log.error(err instanceof Error ? err.message : "Unhandled error", err, {
     endpoint: c.req.path,
     method: c.req.method,
+  });
+
+  console.error("Unhandled API error", {
+    endpoint: c.req.path,
+    method: c.req.method,
+    error:
+      err instanceof Error
+        ? { name: err.name, message: err.message, stack: err.stack }
+        : String(err),
   });
 
   // Auto-create GitHub issue for unhandled (non-HTTP) errors
@@ -449,41 +462,12 @@ app.onError((err, c) => {
       }),
     );
   }
-  // Handle HTTPException properly (auth errors, validation errors, etc.)
-  if (err instanceof Error && "getResponse" in err) {
-    const httpErr = err as { status?: number; message: string };
-    const status = (httpErr.status || 500) as 401 | 403 | 500;
-    return c.json(
-      {
-        success: false,
-        error: {
-          code:
-            status === 401
-              ? "UNAUTHORIZED"
-              : status === 403
-                ? "FORBIDDEN"
-                : "ERROR",
-          message: httpErr.message,
-        },
-        timestamp: new Date().toISOString(),
-      },
-      status,
-    );
-  }
-
-  return c.json(
-    {
-      success: false,
-      error: {
-        code: "INTERNAL_ERROR",
-        message:
-          c.env.ENVIRONMENT === "development"
-            ? err.message
-            : "An error occurred",
-      },
-      timestamp: new Date().toISOString(),
-    },
-    500,
+  const safe = createSafeErrorResponse(err);
+  return error(
+    c,
+    safe.code,
+    safe.message,
+    safe.statusCode as ContentfulStatusCode,
   );
 });
 

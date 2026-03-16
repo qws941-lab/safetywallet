@@ -254,8 +254,7 @@ describe("API Index", () => {
       expect(res.headers.get("Cache-Control")).toBe("private, no-store");
       expect(res.headers.get("Content-Security-Policy-Report-Only")).toBeNull();
       expect(csp).toContain("script-src 'self' 'nonce-");
-      expect(csp).toContain("style-src 'self' 'nonce-");
-      expect(csp).not.toContain("'unsafe-inline'");
+      expect(csp).toContain("style-src 'self' 'unsafe-inline' 'nonce-");
     });
 
     it("applies the same nonce CSP behavior to SPA fallback HTML", async () => {

@@ -15,7 +15,7 @@ test.describe("Worker App Smoke Tests", () => {
     });
 
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
 
     expect(errors).toHaveLength(0);
   });

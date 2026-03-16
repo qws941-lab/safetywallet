@@ -6,6 +6,7 @@ import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import type { Env, AuthContext } from "../../types";
 import { disputes, pointsLedger, users } from "../../db/schema";
+import { createLogger } from "../../lib/logger";
 import { error, success } from "../../lib/response";
 import { formatYearMonth, requireManagerOrAdmin } from "./helpers";
 import {
@@ -14,6 +15,7 @@ import {
 } from "../../validators/schemas";
 
 const app = new Hono<{ Bindings: Env; Variables: { auth: AuthContext } }>();
+const log = createLogger("settlements");
 
 function getMonthRange(month: string): { start: Date; end: Date } {
   const start = new Date(`${month}-01T00:00:00+09:00`);
@@ -76,7 +78,17 @@ app.get("/settlements/status", requireManagerOrAdmin, async (c) => {
       .from(disputes)
       .where(and(...disputeConditions))
       .get(),
-    c.env.KV.get(getSettlementFinalizedKey(month)),
+    c.env.KV.get(getSettlementFinalizedKey(month)).catch((err) => {
+      log.warn(
+        "KV settlement finalized read failed, treating as not finalized",
+        {
+          month,
+          kvKey: getSettlementFinalizedKey(month),
+          error: { name: "KVError", message: String(err) },
+        },
+      );
+      return null;
+    }),
   ]);
 
   let finalizedAt: string | null = null;
@@ -109,7 +121,19 @@ app.post(
     const siteId = c.req.query("siteId")?.trim();
     const month = body.month;
 
-    const finalizedRaw = await c.env.KV.get(getSettlementFinalizedKey(month));
+    let finalizedRaw: string | null = null;
+    try {
+      finalizedRaw = await c.env.KV.get(getSettlementFinalizedKey(month));
+    } catch (err) {
+      log.warn(
+        "KV settlement finalized read failed, treating as not finalized",
+        {
+          month,
+          kvKey: getSettlementFinalizedKey(month),
+          error: { name: "KVError", message: String(err) },
+        },
+      );
+    }
     if (finalizedRaw) {
       return error(
         c,
@@ -143,10 +167,18 @@ app.post(
       perUser,
     };
 
-    await c.env.KV.put(
-      getSettlementSnapshotKey(month),
-      JSON.stringify(summary),
-    );
+    try {
+      await c.env.KV.put(
+        getSettlementSnapshotKey(month),
+        JSON.stringify(summary),
+      );
+    } catch (err) {
+      log.warn("KV settlement snapshot write failed", {
+        month,
+        kvKey: getSettlementSnapshotKey(month),
+        error: { name: "KVError", message: String(err) },
+      });
+    }
 
     return success(c, {
       created: true,
@@ -170,7 +202,17 @@ app.post(
     }
 
     const key = getSettlementFinalizedKey(body.month);
-    const existing = await c.env.KV.get(key);
+    let existing: string | null;
+    try {
+      existing = await c.env.KV.get(key);
+    } catch (err) {
+      log.warn("KV settlement finalize read failed", {
+        month: body.month,
+        kvKey: key,
+        error: { name: "KVError", message: String(err) },
+      });
+      return error(c, "SERVICE_UNAVAILABLE", "KV unavailable, try again", 503);
+    }
 
     if (existing) {
       return error(
@@ -187,7 +229,16 @@ app.post(
       finalizedBy: user.id,
     };
 
-    await c.env.KV.put(key, JSON.stringify(payload));
+    try {
+      await c.env.KV.put(key, JSON.stringify(payload));
+    } catch (err) {
+      log.warn("KV settlement finalize write failed", {
+        month: body.month,
+        kvKey: key,
+        error: { name: "KVError", message: String(err) },
+      });
+      return error(c, "SERVICE_UNAVAILABLE", "KV unavailable, try again", 503);
+    }
 
     return success(c, {
       finalized: true,
@@ -228,9 +279,17 @@ app.get("/settlements/history", requireManagerOrAdmin, async (c) => {
 
   const history = await Promise.all(
     rows.map(async (row) => {
-      const finalizedRaw = await c.env.KV.get(
-        getSettlementFinalizedKey(row.month),
-      );
+      let finalizedRaw: string | null = null;
+      const finalizedKey = getSettlementFinalizedKey(row.month);
+      try {
+        finalizedRaw = await c.env.KV.get(finalizedKey);
+      } catch (err) {
+        log.warn("KV settlement history finalized read failed", {
+          month: row.month,
+          kvKey: finalizedKey,
+          error: { name: "KVError", message: String(err) },
+        });
+      }
       let finalizedAt: string | null = null;
       if (finalizedRaw) {
         try {

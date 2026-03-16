@@ -8,9 +8,12 @@ import {
   siteMemberships,
   accessPolicies,
 } from "../db/schema";
+import { createLogger } from "../lib/logger";
 import { error } from "../lib/response";
 import type { Env, AuthContext } from "../types";
 import { getTodayRange } from "../utils/common";
+
+const logger = createLogger("attendance-middleware");
 
 export async function attendanceMiddleware(
   c: Context<{ Bindings: Env; Variables: { auth: AuthContext } }>,
@@ -57,8 +60,11 @@ export async function attendanceMiddleware(
         if (cached !== null) {
           policy = JSON.parse(cached);
         }
-      } catch {
-        // KV read failure — fall through to D1
+      } catch (err) {
+        logger.warn("KV access-policy read failed, falling back to D1", {
+          kvKey,
+          error: { name: "KVError", message: String(err) },
+        });
       }
       if (policy === undefined) {
         policy = await db
@@ -70,8 +76,11 @@ export async function attendanceMiddleware(
           await c.env.KV.put(kvKey, JSON.stringify(policy ?? null), {
             expirationTtl: 300,
           });
-        } catch {
-          // KV write failure is non-critical
+        } catch (err) {
+          logger.warn("KV access-policy cache write failed", {
+            kvKey,
+            error: { name: "KVError", message: String(err) },
+          });
         }
       }
 
@@ -94,8 +103,13 @@ export async function attendanceMiddleware(
     if (fasStatus === "down") {
       return next();
     }
-  } catch {
-    // KV read failure is non-critical — continue with normal check
+  } catch (err) {
+    logger.warn(
+      "KV fas-status read failed, continuing with normal attendance check",
+      {
+        error: { name: "KVError", message: String(err) },
+      },
+    );
   }
 
   const { start, end } = getTodayRange();

@@ -52,7 +52,17 @@ const CONFIG_KEY = "alert-config";
 const COOLDOWN_PREFIX = "alert-cooldown:";
 
 export async function getAlertConfig(kv: KVNamespace): Promise<AlertConfig> {
-  const raw = await kv.get(CONFIG_KEY);
+  let raw: string | null;
+  try {
+    raw = await kv.get(CONFIG_KEY);
+  } catch (err) {
+    log.warn("KV alert-config read failed, using defaults", {
+      key: CONFIG_KEY,
+      error: { name: "KVError", message: String(err) },
+    });
+    return { ...DEFAULT_CONFIG };
+  }
+
   if (!raw) return { ...DEFAULT_CONFIG };
 
   try {
@@ -69,7 +79,16 @@ export async function setAlertConfig(
 ): Promise<AlertConfig> {
   const current = await getAlertConfig(kv);
   const merged: AlertConfig = { ...current, ...config };
-  await kv.put(CONFIG_KEY, JSON.stringify(merged));
+
+  try {
+    await kv.put(CONFIG_KEY, JSON.stringify(merged));
+  } catch (err) {
+    log.warn("KV alert-config write failed", {
+      key: CONFIG_KEY,
+      error: { name: "KVError", message: String(err) },
+    });
+  }
+
   return merged;
 }
 
@@ -78,7 +97,18 @@ async function isCoolingDown(
   alertType: AlertType,
 ): Promise<boolean> {
   const key = `${COOLDOWN_PREFIX}${alertType}`;
-  const value = await kv.get(key);
+  let value: string | null;
+  try {
+    value = await kv.get(key);
+  } catch (err) {
+    log.warn("KV alert cooldown read failed, allowing alert", {
+      key,
+      alertType,
+      error: { name: "KVError", message: String(err) },
+    });
+    return false;
+  }
+
   return value !== null;
 }
 
@@ -88,7 +118,15 @@ async function setCooldown(
   seconds: number,
 ): Promise<void> {
   const key = `${COOLDOWN_PREFIX}${alertType}`;
-  await kv.put(key, new Date().toISOString(), { expirationTtl: seconds });
+  try {
+    await kv.put(key, new Date().toISOString(), { expirationTtl: seconds });
+  } catch (err) {
+    log.warn("KV alert cooldown write failed", {
+      key,
+      alertType,
+      error: { name: "KVError", message: String(err) },
+    });
+  }
 }
 
 function formatSlackPayload(alert: AlertPayload): Record<string, unknown> {

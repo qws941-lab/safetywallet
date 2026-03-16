@@ -127,8 +127,10 @@ api.get("/system/status", async (c) => {
         });
       }
     }
-  } catch {
-    // KV read failure — return empty notices rather than error
+  } catch (err) {
+    logger.warn("KV notices read failed, returning empty notices", {
+      error: { name: "KVError", message: String(err) },
+    });
   }
 
   return c.json({

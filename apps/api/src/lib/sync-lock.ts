@@ -33,7 +33,17 @@ export async function acquireSyncLock(
   const key = `${LOCK_PREFIX}${lockName}`;
   const holder = `${lockName}-${Date.now()}-${crypto.randomUUID()}`;
 
-  const existing = await kv.get(key);
+  let existing: string | null;
+  try {
+    existing = await kv.get(key);
+  } catch (err) {
+    log.warn("KV sync lock read failed, skipping lock acquisition", {
+      key,
+      lockName,
+      error: { name: "KVError", message: String(err) },
+    });
+    return { acquired: false };
+  }
 
   if (existing) {
     log.info("Sync lock already held", { lockName, holder: existing });
@@ -43,7 +53,17 @@ export async function acquireSyncLock(
   // Put with unique holder ID and TTL. If race occurs between check and put,
   // the lock exists but has our holder ID or the other worker's ID.
   // Subsequent attempts will see the lock and back off.
-  await kv.put(key, holder, { expirationTtl: ttlSeconds });
+  try {
+    await kv.put(key, holder, { expirationTtl: ttlSeconds });
+  } catch (err) {
+    log.warn("KV sync lock write failed, skipping lock acquisition", {
+      key,
+      lockName,
+      holder,
+      error: { name: "KVError", message: String(err) },
+    });
+    return { acquired: false };
+  }
 
   log.info("Sync lock acquired", { lockName, holder });
 

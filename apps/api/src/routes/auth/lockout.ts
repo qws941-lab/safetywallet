@@ -2,7 +2,10 @@ import type { Context } from "hono";
 import { drizzle } from "drizzle-orm/d1";
 import { eq } from "drizzle-orm";
 import { auditLogs, users } from "../../db/schema";
+import { createLogger } from "../../lib/logger";
 import type { Env } from "../../types";
+
+const log = createLogger("lockout");
 
 export const LOGIN_LOCKOUT_KEY_PREFIX = "login:lockout:";
 export const LOGIN_MAX_ATTEMPTS = 5;
@@ -93,15 +96,31 @@ export async function recordFailedAttempt(
 
   if (attempts >= LOGIN_MAX_ATTEMPTS) {
     updated.lockedUntil = nowMs + LOGIN_LOCKOUT_MS;
-    await kv.put(key, JSON.stringify(updated), {
-      expirationTtl: LOGIN_LOCKOUT_TTL_SECONDS,
-    });
+    try {
+      await kv.put(key, JSON.stringify(updated), {
+        expirationTtl: LOGIN_LOCKOUT_TTL_SECONDS,
+      });
+    } catch (err) {
+      log.warn("KV login lockout write failed", {
+        key,
+        attempts,
+        error: { name: "KVError", message: String(err) },
+      });
+    }
     return updated;
   }
 
-  await kv.put(key, JSON.stringify(updated), {
-    expirationTtl: LOGIN_ATTEMPT_TTL_SECONDS,
-  });
+  try {
+    await kv.put(key, JSON.stringify(updated), {
+      expirationTtl: LOGIN_ATTEMPT_TTL_SECONDS,
+    });
+  } catch (err) {
+    log.warn("KV login attempt write failed", {
+      key,
+      attempts,
+      error: { name: "KVError", message: String(err) },
+    });
+  }
   return updated;
 }
 
@@ -142,14 +161,39 @@ export async function getLockoutStatus(
   key: string,
   nowMs: number,
 ): Promise<LoginLockoutRecord | null> {
-  const existingAttempt = parseLoginLockoutRecord(await kv.get(key));
-  if (isExpiredLock(existingAttempt, nowMs)) {
-    await kv.delete(key);
+  let existingAttempt: LoginLockoutRecord | null;
+  try {
+    existingAttempt = parseLoginLockoutRecord(await kv.get(key));
+  } catch (err) {
+    log.warn("KV lockout read failed, failing open", {
+      key,
+      error: { name: "KVError", message: String(err) },
+    });
     return null;
   }
+
+  if (isExpiredLock(existingAttempt, nowMs)) {
+    try {
+      await kv.delete(key);
+    } catch (err) {
+      log.warn("KV expired lock cleanup failed", {
+        key,
+        error: { name: "KVError", message: String(err) },
+      });
+    }
+    return null;
+  }
+
   return existingAttempt;
 }
 
 export async function clearLockout(kv: Env["KV"], key: string): Promise<void> {
-  await kv.delete(key);
+  try {
+    await kv.delete(key);
+  } catch (err) {
+    log.warn("KV lockout clear failed", {
+      key,
+      error: { name: "KVError", message: String(err) },
+    });
+  }
 }

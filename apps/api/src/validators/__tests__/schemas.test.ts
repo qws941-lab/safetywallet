@@ -90,6 +90,19 @@ const fixtures: Record<string, Fixture> = {
       reasonCode: "SAFE_BEHAVIOR",
     },
   },
+  AdminCorrectPointsSchema: {
+    valid: {
+      ledgerId: "550e8400-e29b-41d4-a716-446655440000",
+      reason: "Incorrect amount awarded",
+      correctionType: "CORRECTION",
+      correctedAmount: 5,
+    },
+    invalid: {
+      ledgerId: "not-a-uuid",
+      reason: "",
+      correctionType: "INVALID",
+    },
+  },
   CreatePolicySchema: {
     valid: {
       siteId: "site-1",

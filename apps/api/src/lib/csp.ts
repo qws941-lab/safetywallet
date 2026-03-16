@@ -16,7 +16,7 @@ export function buildHtmlCsp(nonce: string): string {
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' https://static.cloudflareinsights.com`,
-    `style-src 'self' 'nonce-${nonce}'`,
+    `style-src 'self' 'unsafe-inline' 'nonce-${nonce}'`,
     "img-src 'self' blob: data: https:",
     "connect-src 'self' https:",
     "frame-src https://www.youtube.com https://www.youtube-nocookie.com",

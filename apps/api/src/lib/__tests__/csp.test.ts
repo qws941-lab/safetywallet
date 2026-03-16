@@ -15,9 +15,8 @@ describe("csp helpers", () => {
     expect(csp).toContain(
       "script-src 'self' 'nonce-test-nonce' https://static.cloudflareinsights.com",
     );
-    expect(csp).toContain(
-      "style-src 'self' 'unsafe-inline' 'nonce-test-nonce'",
-    );
+    expect(csp).toContain("style-src 'self' 'unsafe-inline'");
+    expect(csp).not.toContain("style-src 'self' 'unsafe-inline' 'nonce-");
   });
 
   it("builds strict API CSP without nonce or unsafe-inline", () => {

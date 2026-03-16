@@ -21,6 +21,7 @@ import settlementsApp from "./settlements";
 import distributionsApp from "./distributions";
 import issuesApp from "./issues";
 import educationApp from "./education";
+import pointsApp from "./points";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -48,5 +49,6 @@ app.route("/", settlementsApp);
 app.route("/", distributionsApp);
 app.route("/", issuesApp);
 app.route("/", educationApp);
+app.route("/", pointsApp);
 
 export default app;

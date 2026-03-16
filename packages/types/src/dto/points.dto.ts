@@ -12,6 +12,21 @@ export interface RevokePointsDto {
   reason: string;
 }
 
+export interface PointCorrectionDto {
+  ledgerId: string;
+  reason: string;
+  correctionType: "CORRECTION" | "REVOKE";
+}
+
+export interface PointCorrectionResultDto {
+  correctionLedgerId: string;
+  originalLedgerId: string;
+  originalAmount: number;
+  correctedAmount: number;
+  reason: string;
+  correctionType: "CORRECTION" | "REVOKE";
+}
+
 export interface PointsLedgerDto {
   id: string;
   userId: string;

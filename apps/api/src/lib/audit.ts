@@ -66,6 +66,8 @@ export type AuditAction =
   | "USER_DELETION_CANCEL"
   | "USER_DATA_EXPORT"
   | "EMERGENCY_DELETE"
+  | "POINT_CORRECTION" // Admin correction of previously awarded points
+  | "POINT_REVOKE" // Full revocation of point entry
   | "EMERGENCY_PII_PURGE";
 
 /**

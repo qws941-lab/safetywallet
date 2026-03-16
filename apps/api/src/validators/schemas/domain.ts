@@ -109,6 +109,12 @@ export const AwardPointsSchema = z.object({
   reasonText: z.string().optional(),
 });
 
+export const AdminCorrectPointsSchema = z.object({
+  ledgerId: uuid,
+  reason: z.string().min(1).max(500),
+  correctionType: z.enum(["CORRECTION", "REVOKE"]),
+});
+
 // ─── Policies Schemas ────────────────────────────────────────────────────────
 
 export const CreatePolicySchema = z.object({

@@ -3,11 +3,19 @@ import { zValidator } from "@hono/zod-validator";
 import { drizzle } from "drizzle-orm/d1";
 import { and, eq } from "drizzle-orm";
 import type { Env, AuthContext } from "../../types";
-import { pointsLedger } from "../../db/schema";
+import {
+  pointsLedger,
+  pushSubscriptions,
+  siteMemberships,
+} from "../../db/schema";
 import { success, error } from "../../lib/response";
 import { logAuditWithContext } from "../../lib/audit";
 import { AdminCorrectPointsSchema } from "../../validators/schemas";
 import { createLogger } from "../../lib/logger";
+import {
+  enqueueNotification,
+  type NotificationQueueMessage,
+} from "../../lib/notification-queue";
 
 const logger = createLogger("admin-points");
 
@@ -24,6 +32,31 @@ app.post(
     const { user } = c.get("auth");
     const body = c.req.valid("json");
 
+    if (
+      body.correctionType === "CORRECTION" &&
+      (body.correctedAmount === undefined || body.correctedAmount === null)
+    ) {
+      return error(
+        c,
+        "CORRECTED_AMOUNT_REQUIRED",
+        "correctedAmount is required for CORRECTION",
+        400,
+      );
+    }
+
+    if (
+      body.correctionType === "CORRECTION" &&
+      typeof body.correctedAmount === "number" &&
+      body.correctedAmount < 0
+    ) {
+      return error(
+        c,
+        "INVALID_CORRECTED_AMOUNT",
+        "correctedAmount must be greater than or equal to 0",
+        400,
+      );
+    }
+
     const original = await db
       .select()
       .from(pointsLedger)
@@ -36,6 +69,28 @@ app.post(
         "LEDGER_NOT_FOUND",
         "Original ledger entry not found",
         404,
+      );
+    }
+
+    const adminMembership = await db
+      .select()
+      .from(siteMemberships)
+      .where(
+        and(
+          eq(siteMemberships.userId, user.id),
+          eq(siteMemberships.siteId, original.siteId),
+          eq(siteMemberships.status, "ACTIVE"),
+          eq(siteMemberships.role, "SITE_ADMIN"),
+        ),
+      )
+      .get();
+
+    if (!adminMembership && user.role !== "SUPER_ADMIN") {
+      return error(
+        c,
+        "SITE_ADMIN_REQUIRED",
+        "Site admin access required for this site",
+        403,
       );
     }
 
@@ -60,15 +115,18 @@ app.post(
       const finalizedRaw = await c.env.KV.get(settlementKey);
       isFinalized = Boolean(finalizedRaw);
     } catch (e) {
-      logger.warn(
-        "KV settlement finalized read failed, treating as not finalized",
-        {
-          error:
-            e instanceof Error
-              ? { name: e.name, message: e.message }
-              : { name: "UnknownError", message: String(e) },
-          metadata: { month: original.settleMonth },
-        },
+      logger.error("KV settlement finalized read failed", {
+        error:
+          e instanceof Error
+            ? { name: e.name, message: e.message }
+            : { name: "UnknownError", message: String(e) },
+        metadata: { month: original.settleMonth },
+      });
+      return error(
+        c,
+        "SETTLEMENT_CHECK_FAILED",
+        "Cannot verify settlement status — try again later",
+        503,
       );
     }
 
@@ -81,7 +139,11 @@ app.post(
       );
     }
 
-    const correctionAmount = -original.amount;
+    const correctedAmountValue = body.correctedAmount ?? 0;
+    const correctionAmount =
+      body.correctionType === "REVOKE"
+        ? -original.amount
+        : correctedAmountValue - original.amount;
     const now = new Date();
     const settleMonth = original.settleMonth;
     const reasonCode =
@@ -125,6 +187,51 @@ app.post(
         postId: original.postId ?? undefined,
       },
     );
+
+    try {
+      if (c.env.NOTIFICATION_QUEUE) {
+        const subs = await db
+          .select({
+            id: pushSubscriptions.id,
+            userId: pushSubscriptions.userId,
+            endpoint: pushSubscriptions.endpoint,
+            p256dh: pushSubscriptions.p256dh,
+            auth: pushSubscriptions.auth,
+            failCount: pushSubscriptions.failCount,
+          })
+          .from(pushSubscriptions)
+          .where(eq(pushSubscriptions.userId, original.userId))
+          .all();
+
+        if (subs.length > 0) {
+          const pushMessage = {
+            title:
+              body.correctionType === "REVOKE" ? "포인트 취소" : "포인트 수정",
+            body: body.reason,
+            tag: `point-correction-${correctionLedgerId}`,
+          };
+
+          const queueMsg: NotificationQueueMessage = {
+            type: "push_bulk",
+            subscriptions: subs,
+            message: pushMessage,
+            enqueuedAt: new Date().toISOString(),
+          };
+          await enqueueNotification(c.env.NOTIFICATION_QUEUE, queueMsg);
+        }
+      }
+    } catch (e) {
+      logger.warn("Point correction notification enqueue failed", {
+        error:
+          e instanceof Error
+            ? { name: e.name, message: e.message }
+            : { name: "UnknownError", message: String(e) },
+        metadata: {
+          originalUserId: original.userId,
+          correctionLedgerId,
+        },
+      });
+    }
 
     logger.info("Points corrected", {
       metadata: {

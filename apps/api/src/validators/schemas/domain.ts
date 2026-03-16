@@ -113,6 +113,7 @@ export const AdminCorrectPointsSchema = z.object({
   ledgerId: uuid,
   reason: z.string().min(1).max(500),
   correctionType: z.enum(["CORRECTION", "REVOKE"]),
+  correctedAmount: z.number().optional(),
 });
 
 // ─── Policies Schemas ────────────────────────────────────────────────────────

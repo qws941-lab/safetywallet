@@ -16,6 +16,7 @@ export interface PointCorrectionDto {
   ledgerId: string;
   reason: string;
   correctionType: "CORRECTION" | "REVOKE";
+  correctedAmount?: number;
 }
 
 export interface PointCorrectionResultDto {

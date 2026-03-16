@@ -9,6 +9,7 @@ import {
 } from "./lib/fas-sync";
 import type { Env } from "./types";
 import { success, error } from "./lib/response";
+import { buildHtmlCsp, generateNonce } from "./lib/csp";
 
 import auth from "./routes/auth";
 import attendanceRoute from "./routes/attendance";
@@ -281,6 +282,36 @@ const getMimeType = (path: string): string => {
   return MIME_TYPES[ext] || "application/octet-stream";
 };
 
+const isHtmlResponse = (response: Response): boolean => {
+  return response.headers.get("content-type")?.includes("text/html") ?? false;
+};
+
+const applyHtmlNonce = (response: Response): Response => {
+  const nonce = generateNonce();
+  const rewriter = new HTMLRewriter()
+    .on("script:not([src])", {
+      element(element) {
+        element.setAttribute("nonce", nonce);
+      },
+    })
+    .on("style", {
+      element(element) {
+        element.setAttribute("nonce", nonce);
+      },
+    });
+  const rewritten = rewriter.transform(response);
+  const headers = new Headers(rewritten.headers);
+
+  headers.set("Cache-Control", "private, no-store");
+  headers.set("Content-Security-Policy", buildHtmlCsp(nonce));
+
+  return new Response(rewritten.body, {
+    status: rewritten.status,
+    statusText: rewritten.statusText,
+    headers,
+  });
+};
+
 // R2 image/video serving — public, no auth required
 app.get("/r2/*", async (c) => {
   const key = c.req.path.replace(/^\/r2\//, "");
@@ -345,6 +376,10 @@ app.all("*", async (c) => {
     // Try to fetch the requested asset
     let response = await c.env.ASSETS.fetch(targetUrl);
 
+    if (response.status === 200 && isHtmlResponse(response)) {
+      return applyHtmlNonce(response);
+    }
+
     // SPA Fallback: If not found, serve the index.html for that specific app
     if (response.status === 404) {
       const fallbackPath = isAdmin ? "/admin/index.html" : "/index.html";
@@ -355,11 +390,7 @@ app.all("*", async (c) => {
       if (response.status === 200) {
         const newResponse = new Response(response.body, response);
         newResponse.headers.set("Content-Type", "text/html");
-        newResponse.headers.set(
-          "Cache-Control",
-          "public, max-age=0, must-revalidate",
-        );
-        return newResponse;
+        return applyHtmlNonce(newResponse);
       }
     }
 

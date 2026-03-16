@@ -1,6 +1,35 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { app } from "../index";
 
+class MockHtmlElement {
+  attributes = new Map<string, string>();
+
+  setAttribute(name: string, value: string) {
+    this.attributes.set(name, value);
+  }
+}
+
+type HtmlHandler = {
+  element(element: MockHtmlElement): void;
+};
+
+class MockHTMLRewriter {
+  private readonly handlers: HtmlHandler[] = [];
+
+  on(_selector: string, handler: HtmlHandler): this {
+    this.handlers.push(handler);
+    return this;
+  }
+
+  transform(response: Response): Response {
+    for (const handler of this.handlers) {
+      handler.element(new MockHtmlElement());
+    }
+
+    return response;
+  }
+}
+
 // Mock the logger to prevent console noise
 vi.mock("../lib/logger", () => ({
   createLogger: () => ({
@@ -15,6 +44,12 @@ describe("API Index", () => {
   let mockEnv: any;
 
   beforeEach(() => {
+    Object.defineProperty(globalThis, "HTMLRewriter", {
+      configurable: true,
+      writable: true,
+      value: MockHTMLRewriter,
+    });
+
     mockEnv = {
       ALLOWED_ORIGINS: "http://localhost:3000,https://safetywallet.jclee.me",
       ENVIRONMENT: "test",
@@ -195,6 +230,53 @@ describe("API Index", () => {
       expect(res.status).toBe(404);
       expect(json.success).toBe(false);
       expect(json.error.code).toBe("NOT_FOUND");
+    });
+  });
+
+  describe("Static HTML serving", () => {
+    it("adds nonce CSP headers for direct HTML assets", async () => {
+      mockEnv.ASSETS.fetch = vi.fn().mockResolvedValue(
+        new Response(
+          "<html><head><style>body{}</style></head><body><script>1</script></body></html>",
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "text/html; charset=utf-8",
+            },
+          },
+        ),
+      );
+
+      const res = await app.request("http://localhost/", {}, mockEnv);
+      const csp = res.headers.get("Content-Security-Policy");
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get("Cache-Control")).toBe("private, no-store");
+      expect(res.headers.get("Content-Security-Policy-Report-Only")).toBeNull();
+      expect(csp).toContain("script-src 'self' 'nonce-");
+      expect(csp).toContain("style-src 'self' 'nonce-");
+      expect(csp).not.toContain("'unsafe-inline'");
+    });
+
+    it("applies the same nonce CSP behavior to SPA fallback HTML", async () => {
+      mockEnv.ASSETS.fetch = vi
+        .fn()
+        .mockResolvedValueOnce(new Response("missing", { status: 404 }))
+        .mockResolvedValueOnce(
+          new Response("<html><body><script>1</script></body></html>", {
+            status: 200,
+          }),
+        );
+
+      const res = await app.request("http://localhost/dashboard", {}, mockEnv);
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get("Content-Type")).toContain("text/html");
+      expect(res.headers.get("Cache-Control")).toBe("private, no-store");
+      expect(res.headers.get("Content-Security-Policy-Report-Only")).toBeNull();
+      expect(res.headers.get("Content-Security-Policy")).toContain(
+        "script-src 'self' 'nonce-",
+      );
     });
   });
 
